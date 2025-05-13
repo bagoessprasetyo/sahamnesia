@@ -1,13 +1,16 @@
-import React from 'react';
+// import React from 'react';
 import Header from './components/Header';
 import Hero from './components/Hero';
 import ProblemSolution from './components/ProblemSolution';
 import Features from './components/Features';
 import HowItWorks from './components/HowItWorks';
+import StockWidgets from './components/StockWidgets';
 import BlogSection from './components/BlogSection';
 import SocialProof from './components/SocialProof';
 import CallToAction from './components/CallToAction';
 import Footer from './components/Footer';
+import StockTickerDemo from './components/StockTicker';
+// import StockTickerDemo from "./components/StockWidgets";
 
 function App() {
   return (
@@ -15,9 +18,11 @@ function App() {
       <Header />
       <main>
         <Hero />
+        <StockTickerDemo />
         <ProblemSolution />
         <Features />
         <HowItWorks />
+        {/* <StockWidgets /> */}
         <BlogSection />
         <SocialProof />
         <CallToAction />

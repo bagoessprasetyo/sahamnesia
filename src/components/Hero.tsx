@@ -1,5 +1,6 @@
 import React from 'react';
 import { ArrowRight } from 'lucide-react';
+import StockTickerDemo from './StockTicker';
 
 const Hero: React.FC = () => {
   return (
@@ -54,6 +55,7 @@ const Hero: React.FC = () => {
           </div>
         </div>
       </div>
+        {/* <StockTickerDemo /> */}
     </section>
   );
 };
