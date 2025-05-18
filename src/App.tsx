@@ -10,6 +10,7 @@ import SocialProof from './components/SocialProof';
 import CallToAction from './components/CallToAction';
 import Footer from './components/Footer';
 import StockTickerDemo from './components/StockTicker';
+import Chatbot from './components/Chatbot';
 // import StockTickerDemo from "./components/StockWidgets";
 
 function App() {
@@ -28,6 +29,7 @@ function App() {
         <CallToAction />
       </main>
       <Footer />
+      <Chatbot />
     </div>
   );
 }
