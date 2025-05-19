@@ -4,7 +4,6 @@ import Hero from './components/Hero';
 import ProblemSolution from './components/ProblemSolution';
 import Features from './components/Features';
 import HowItWorks from './components/HowItWorks';
-import StockWidgets from './components/StockWidgets';
 import BlogSection from './components/BlogSection';
 import SocialProof from './components/SocialProof';
 import CallToAction from './components/CallToAction';
