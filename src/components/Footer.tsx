@@ -9,8 +9,8 @@ const Footer: React.FC = () => {
           {/* Company Info */}
           <div className="col-span-1 md:col-span-1">
             <div className="flex items-center mb-4">
-              <TrendingUp className="h-8 w-8 text-primary-500" />
-              <span className="ml-2 text-xl font-bold text-white">Saham Cerdas AI</span>
+              <TrendingUp className="h-8 w-8 text-blue-500" />
+              <span className="ml-2 text-xl font-bold text-white">Sahamnesia</span>
             </div>
             <p className="mb-4">
               Platform pembelajaran saham berbasis AI pertama di Indonesia yang membuat belajar investasi lebih mudah dan personal.
@@ -36,13 +36,13 @@ const Footer: React.FC = () => {
 
           {/* Quick Links */}
           <div>
-            <h3 className="text-lg font-semibold text-white mb-4">Tautan Cepat</h3>
+            <h3 className="text-lg font-semibold text-white mb-4">Menu</h3>
             <ul className="space-y-2">
-              <li><a href="#" className="hover:text-primary-400 transition-colors">Beranda</a></li>
-              <li><a href="#features" className="hover:text-primary-400 transition-colors">Fitur</a></li>
-              <li><a href="#how-it-works" className="hover:text-primary-400 transition-colors">Cara Kerja</a></li>
-              <li><a href="#testimonials" className="hover:text-primary-400 transition-colors">Testimoni</a></li>
-              <li><a href="#" className="hover:text-primary-400 transition-colors">Mulai Belajar</a></li>
+              <li><a href="/" className="hover:text-blue-400 transition-colors">Home</a></li>
+              <li><a href="/blog" className="hover:text-blue-400 transition-colors">Blog</a></li>
+              <li><a href="/news" className="hover:text-blue-400 transition-colors">News</a></li>
+              <li><a href="/contact" className="hover:text-blue-400 transition-colors">Contact Us</a></li>
+              <li><a href="/courses" className="hover:text-blue-400 transition-colors">Kursus</a></li>
             </ul>
           </div>
 
@@ -50,10 +50,10 @@ const Footer: React.FC = () => {
           <div>
             <h3 className="text-lg font-semibold text-white mb-4">Legal</h3>
             <ul className="space-y-2">
-              <li><a href="#" className="hover:text-primary-400 transition-colors">Kebijakan Privasi</a></li>
-              <li><a href="#" className="hover:text-primary-400 transition-colors">Syarat dan Ketentuan</a></li>
-              <li><a href="#" className="hover:text-primary-400 transition-colors">Kebijakan Refund</a></li>
-              <li><a href="#" className="hover:text-primary-400 transition-colors">FAQ</a></li>
+              <li><a href="#" className="hover:text-blue-400 transition-colors">Kebijakan Privasi</a></li>
+              <li><a href="#" className="hover:text-blue-400 transition-colors">Syarat dan Ketentuan</a></li>
+              <li><a href="#" className="hover:text-blue-400 transition-colors">Kebijakan Refund</a></li>
+              <li><a href="#" className="hover:text-blue-400 transition-colors">FAQ</a></li>
             </ul>
           </div>
 
@@ -62,18 +62,18 @@ const Footer: React.FC = () => {
             <h3 className="text-lg font-semibold text-white mb-4">Hubungi Kami</h3>
             <ul className="space-y-4">
               <li className="flex">
-                <MapPin className="h-5 w-5 mr-3 text-primary-500" />
+                <MapPin className="h-5 w-5 mr-3 text-blue-500" />
                 <span>Jakarta, Indonesia</span>
               </li>
               <li className="flex">
-                <Mail className="h-5 w-5 mr-3 text-primary-500" />
-                <a href="mailto:info@sahamcerdasai.id" className="hover:text-primary-400 transition-colors">
-                  info@sahamcerdasai.id
+                <Mail className="h-5 w-5 mr-3 text-blue-500" />
+                <a href="mailto:info@sahamnesia.id" className="hover:text-blue-400 transition-colors">
+                  info@sahamnesia.id
                 </a>
               </li>
               <li className="flex">
-                <Phone className="h-5 w-5 mr-3 text-primary-500" />
-                <a href="tel:+6281234567890" className="hover:text-primary-400 transition-colors">
+                <Phone className="h-5 w-5 mr-3 text-blue-500" />
+                <a href="tel:+6281234567890" className="hover:text-blue-400 transition-colors">
                   +62 812 3456 7890
                 </a>
               </li>
@@ -82,11 +82,10 @@ const Footer: React.FC = () => {
         </div>
         
         <div className="border-t border-gray-800 mt-12 pt-8 text-center text-sm">
-          <p>© {new Date().getFullYear()} Saham Cerdas AI. Hak Cipta Dilindungi.</p>
+          <p>© {new Date().getFullYear()} Sahamnesia. Hak Cipta Dilindungi.</p>
         </div>
       </div>
     </footer>
   );
 };
-
 export default Footer;

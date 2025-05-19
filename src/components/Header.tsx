@@ -1,7 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Menu, X, Sprout } from 'lucide-react';
+import { Menu, X, TrendingUp } from 'lucide-react';
 
-const Header: React.FC = () => {
+interface HeaderProps {
+  onNavigate?: (page: string) => void;
+}
+
+const Header: React.FC<HeaderProps> = ({ onNavigate }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
 
@@ -18,31 +22,58 @@ const Header: React.FC = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  const handleNavClick = (page: string) => {
+    if (onNavigate) {
+      onNavigate(page);
+    }
+    setIsOpen(false);
+  };
+
   return (
     <header 
-      className={`fixed top-0 left-0 w-full z-50 transition-all duration-300 backdrop-blur-lg bg-white/60 border-b border-white/30 shadow-lg ${
-        isScrolled ? 'backdrop-saturate-150 bg-white/70 shadow-xl py-3' : 'bg-transparent py-5'
+      className={`fixed top-0 left-0 w-full z-50 transition-all duration-300 backdrop-blur-lg ${
+        isScrolled 
+          ? 'bg-white/95 backdrop-saturate-150 shadow-lg border-b border-gray-200' 
+          : 'bg-white/80 backdrop-blur-md shadow-md'
       }`}
     >
       <div className="container mx-auto px-4 md:px-6">
-        <div className="flex justify-between items-center">
-          <div className="flex items-center">
-            <Sprout className="h-8 w-8 text-primary-600" />
+        <div className="flex justify-between items-center h-16">
+          <button 
+            onClick={() => handleNavClick('home')}
+            className="flex items-center"
+          >
+            <TrendingUp className="h-8 w-8 text-blue-600" />
             <span className="ml-2 text-xl font-bold text-gray-900">Sahamnesia</span>
-          </div>
+          </button>
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center space-x-8">
-            <a href="#features" className="text-gray-700 hover:text-primary-600 font-medium transition-colors">
-              Fitur
-            </a>
-            <a href="#how-it-works" className="text-gray-700 hover:text-primary-600 font-medium transition-colors">
-              Cara Kerja
-            </a>
-            <a href="#testimonials" className="text-gray-700 hover:text-primary-600 font-medium transition-colors">
-              Testimoni
-            </a>
-            <button className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors font-medium">
+            <button 
+              onClick={() => handleNavClick('home')}
+              className="text-gray-700 hover:text-blue-600 font-medium transition-colors"
+            >
+              Home
+            </button>
+            <button 
+              onClick={() => handleNavClick('blog')}
+              className="text-gray-700 hover:text-blue-600 font-medium transition-colors"
+            >
+              Blog
+            </button>
+            <button 
+              onClick={() => handleNavClick('news')}
+              className="text-gray-700 hover:text-blue-600 font-medium transition-colors"
+            >
+              News
+            </button>
+            <button 
+              onClick={() => handleNavClick('contact')}
+              className="text-gray-700 hover:text-blue-600 font-medium transition-colors"
+            >
+              Contact Us
+            </button>
+            <button className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium">
               Mulai Belajar
             </button>
           </nav>
@@ -58,30 +89,33 @@ const Header: React.FC = () => {
 
         {/* Mobile Navigation */}
         {isOpen && (
-          <div className="md:hidden mt-4 py-4 bg-white rounded-lg shadow-lg absolute top-full left-4 right-4">
+          <div className="md:hidden mt-4 py-4 bg-white rounded-lg shadow-lg absolute top-full left-4 right-4 border border-gray-200">
             <div className="flex flex-col space-y-4 px-4">
-              <a 
-                href="#features" 
-                className="text-gray-700 hover:text-primary-600 font-medium transition-colors"
-                onClick={() => setIsOpen(false)}
+              <button 
+                onClick={() => handleNavClick('home')}
+                className="text-gray-700 hover:text-blue-600 font-medium transition-colors text-left"
               >
-                Fitur
-              </a>
-              <a 
-                href="#how-it-works" 
-                className="text-gray-700 hover:text-primary-600 font-medium transition-colors"
-                onClick={() => setIsOpen(false)}
+                Home
+              </button>
+              <button 
+                onClick={() => handleNavClick('blog')}
+                className="text-gray-700 hover:text-blue-600 font-medium transition-colors text-left"
               >
-                Cara Kerja
-              </a>
-              <a 
-                href="#testimonials" 
-                className="text-gray-700 hover:text-primary-600 font-medium transition-colors"
-                onClick={() => setIsOpen(false)}
+                Blog
+              </button>
+              <button 
+                onClick={() => handleNavClick('news')}
+                className="text-gray-700 hover:text-blue-600 font-medium transition-colors text-left"
               >
-                Testimoni
-              </a>
-              <button className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors font-medium">
+                News
+              </button>
+              <button 
+                onClick={() => handleNavClick('contact')}
+                className="text-gray-700 hover:text-blue-600 font-medium transition-colors text-left"
+              >
+                Contact Us
+              </button>
+              <button className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium">
                 Mulai Belajar
               </button>
             </div>
