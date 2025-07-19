@@ -7,6 +7,7 @@ import AdminLogin from './AdminLogin';
 import BlogPostsList from './BlogPostsList';
 import BlogPostForm from './BlogPostForm';
 import MediaLibrary from './MediaLibrary';
+import AdminNews from './AdminNews';
 
 // Placeholder components - these will be implemented next
 
@@ -25,12 +26,6 @@ const AdminAuthors = () => (
 );
 
 
-const AdminNews = () => (
-  <div className="bg-white rounded-xl border p-6">
-    <h1 className="text-2xl font-bold mb-4">News Monitor</h1>
-    <p className="text-gray-600">News monitoring interface will be implemented here.</p>
-  </div>
-);
 
 const AdminAnalytics = () => (
   <div className="bg-white rounded-xl border p-6">
@@ -197,7 +192,7 @@ const AdminApp: React.FC<AdminAppProps> = ({ onNavigateToMain }) => {
       case '/admin/media':
         return <MediaLibrary onNavigate={handleNavigate} />;
       case '/admin/news':
-        return <AdminNews />;
+        return <AdminNews currentAdmin={currentAdmin} onNavigate={handleNavigate} />;
       case '/admin/analytics':
         return <AdminAnalytics />;
       case '/admin/users':
