@@ -19,7 +19,7 @@ export const useChat = () => {
     try {
       const savedMessages = localStorage.getItem(STORAGE_KEY);
       if (savedMessages) {
-        const parsedMessages = JSON.parse(savedMessages).map((msg: any) => ({
+        const parsedMessages = JSON.parse(savedMessages).map((msg: Omit<ChatMessage, 'timestamp'> & { timestamp: string }) => ({
           ...msg,
           timestamp: new Date(msg.timestamp)
         }));

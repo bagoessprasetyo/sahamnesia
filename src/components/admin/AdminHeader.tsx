@@ -10,13 +10,15 @@ import {
   Home,
   RefreshCw,
   Moon,
-  Sun
+  Sun,
+  Monitor
 } from 'lucide-react';
-import { AdminUser, AdminNotification } from '@/types/admin';
+import { AdminUser } from '@/types/admin';
+import { useTheme } from '@/contexts/ThemeContext';
+import { useNotifications } from '@/contexts/NotificationContext';
 
 interface AdminHeaderProps {
   currentAdmin: AdminUser;
-  notifications: AdminNotification[];
   currentPath: string;
   onNavigate: (path: string) => void;
   onLogout: () => void;
@@ -26,7 +28,6 @@ interface AdminHeaderProps {
 
 const AdminHeader: React.FC<AdminHeaderProps> = ({
   currentAdmin,
-  notifications,
   currentPath,
   onNavigate,
   onLogout,
@@ -36,7 +37,8 @@ const AdminHeader: React.FC<AdminHeaderProps> = ({
   const [showNotifications, setShowNotifications] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [isDarkMode, setIsDarkMode] = useState(false);
+  const { theme, setTheme } = useTheme();
+  const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
 
   // Close dropdowns when clicking outside
   useEffect(() => {
@@ -80,6 +82,8 @@ const AdminHeader: React.FC<AdminHeaderProps> = ({
         return 'Notifications';
       case 'settings':
         return 'Settings';
+      case 'profile':
+        return 'Profile';
       default:
         return 'Admin Panel';
     }
@@ -109,7 +113,6 @@ const AdminHeader: React.FC<AdminHeaderProps> = ({
     return breadcrumbs;
   };
 
-  const unreadNotifications = notifications.filter(n => !n.is_read);
   const breadcrumbs = getBreadcrumbs();
 
   const handleSearch = (e: React.FormEvent) => {
@@ -120,23 +123,43 @@ const AdminHeader: React.FC<AdminHeaderProps> = ({
     }
   };
 
-  const toggleDarkMode = () => {
-    setIsDarkMode(!isDarkMode);
-    // Implement dark mode toggle
-    document.documentElement.classList.toggle('dark');
+  const getThemeIcon = () => {
+    switch (theme) {
+      case 'light':
+        return <Sun className="w-5 h-5 text-gray-600 dark:text-gray-400" />;
+      case 'dark':
+        return <Moon className="w-5 h-5 text-gray-600 dark:text-gray-400" />;
+      case 'system':
+        return <Monitor className="w-5 h-5 text-gray-600 dark:text-gray-400" />;
+      default:
+        return <Sun className="w-5 h-5 text-gray-600 dark:text-gray-400" />;
+    }
+  };
+
+  const getThemeLabel = () => {
+    switch (theme) {
+      case 'light':
+        return 'Light mode';
+      case 'dark':
+        return 'Dark mode';
+      case 'system':
+        return 'System theme';
+      default:
+        return 'Light mode';
+    }
   };
 
   return (
-    <header className="bg-white border-b border-gray-200 h-16 flex items-center justify-between px-6 sticky top-0 z-40">
+    <header className="bg-background border-b border-border h-16 flex items-center justify-between px-6 sticky top-0 z-40 dark:bg-background dark:border-border">
       {/* Left Section */}
       <div className="flex items-center space-x-4">
         {/* Mobile menu button */}
         <button
           onClick={onToggleSidebar}
-          className="lg:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors"
+          className="lg:hidden p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
           title="Toggle sidebar"
         >
-          <Menu className="w-5 h-5 text-gray-600" />
+          <Menu className="w-5 h-5 text-gray-600 dark:text-gray-400" />
         </button>
 
         {/* Breadcrumbs */}
@@ -204,17 +227,23 @@ const AdminHeader: React.FC<AdminHeaderProps> = ({
             </button>
           )}
 
-          <button
-            onClick={toggleDarkMode}
-            className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
-            title="Toggle dark mode"
-          >
-            {isDarkMode ? (
-              <Sun className="w-5 h-5 text-gray-600" />
-            ) : (
-              <Moon className="w-5 h-5 text-gray-600" />
-            )}
-          </button>
+          <div className="relative">
+            <button
+              onClick={() => {
+                if (theme === 'light') {
+                  setTheme('dark');
+                } else if (theme === 'dark') {
+                  setTheme('system');
+                } else {
+                  setTheme('light');
+                }
+              }}
+              className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+              title={`Current: ${getThemeLabel()}. Click to change theme.`}
+            >
+              {getThemeIcon()}
+            </button>
+          </div>
         </div>
 
         {/* Notifications */}
@@ -225,40 +254,54 @@ const AdminHeader: React.FC<AdminHeaderProps> = ({
             title="Notifications"
           >
             <Bell className="w-5 h-5 text-gray-600" />
-            {unreadNotifications.length > 0 && (
+            {unreadCount > 0 && (
               <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                {unreadNotifications.length > 9 ? '9+' : unreadNotifications.length}
+                {unreadCount > 9 ? '9+' : unreadCount}
               </span>
             )}
           </button>
 
           {/* Notifications Dropdown */}
           {showNotifications && (
-            <div className="absolute right-0 top-12 w-80 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
-              <div className="p-4 border-b border-gray-200">
+            <div className="absolute right-0 top-12 w-80 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50">
+              <div className="p-4 border-b border-gray-200 dark:border-gray-700">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-semibold text-gray-900">Notifications</h3>
-                  {unreadNotifications.length > 0 && (
-                    <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
-                      {unreadNotifications.length} new
-                    </span>
-                  )}
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Notifications</h3>
+                  <div className="flex items-center space-x-2">
+                    {unreadCount > 0 && (
+                      <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
+                        {unreadCount} new
+                      </span>
+                    )}
+                    {unreadCount > 0 && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          markAllAsRead();
+                        }}
+                        className="text-xs text-blue-600 hover:text-blue-700 font-medium"
+                      >
+                        Mark all read
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
               
               <div className="max-h-80 overflow-y-auto">
                 {notifications.length === 0 ? (
-                  <div className="p-4 text-center text-gray-500">
+                  <div className="p-4 text-center text-gray-500 dark:text-gray-400">
                     No notifications
                   </div>
                 ) : (
                   notifications.slice(0, 5).map((notification) => (
                     <div
                       key={notification.id}
-                      className={`p-4 border-b border-gray-100 hover:bg-gray-50 cursor-pointer ${
-                        !notification.is_read ? 'bg-blue-50' : ''
+                      className={`p-4 border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer ${
+                        !notification.is_read ? 'bg-blue-50 dark:bg-blue-900/20' : ''
                       }`}
                       onClick={() => {
+                        markAsRead(notification.id);
                         if (notification.action_url) {
                           onNavigate(notification.action_url);
                         }
@@ -273,13 +316,13 @@ const AdminHeader: React.FC<AdminHeaderProps> = ({
                           'bg-blue-500'
                         }`} />
                         <div className="flex-1">
-                          <h4 className="text-sm font-medium text-gray-900">
+                          <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100">
                             {notification.title}
                           </h4>
-                          <p className="text-sm text-gray-600 mt-1">
+                          <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
                             {notification.message}
                           </p>
-                          <p className="text-xs text-gray-400 mt-2">
+                          <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">
                             {new Date(notification.created_at).toLocaleString()}
                           </p>
                         </div>
@@ -290,13 +333,13 @@ const AdminHeader: React.FC<AdminHeaderProps> = ({
               </div>
               
               {notifications.length > 5 && (
-                <div className="p-4 border-t border-gray-200">
+                <div className="p-4 border-t border-gray-200 dark:border-gray-700">
                   <button
                     onClick={() => {
                       onNavigate('/admin/notifications');
                       setShowNotifications(false);
                     }}
-                    className="w-full text-center text-blue-600 hover:text-blue-700 text-sm font-medium"
+                    className="w-full text-center text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 text-sm font-medium"
                   >
                     View all notifications
                   </button>
@@ -330,12 +373,12 @@ const AdminHeader: React.FC<AdminHeaderProps> = ({
 
           {/* User Dropdown */}
           {showUserMenu && (
-            <div className="absolute right-0 top-12 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
-              <div className="p-4 border-b border-gray-200">
-                <p className="text-sm font-medium text-gray-900">
+            <div className="absolute right-0 top-12 w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50">
+              <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+                <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
                   {currentAdmin.name}
                 </p>
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-gray-500 dark:text-gray-400">
                   {currentAdmin.email}
                 </p>
               </div>
@@ -346,7 +389,7 @@ const AdminHeader: React.FC<AdminHeaderProps> = ({
                     onNavigate('/admin/profile');
                     setShowUserMenu(false);
                   }}
-                  className="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  className="w-full flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
                 >
                   <User className="w-4 h-4 mr-3" />
                   Profile
@@ -357,20 +400,20 @@ const AdminHeader: React.FC<AdminHeaderProps> = ({
                     onNavigate('/admin/settings');
                     setShowUserMenu(false);
                   }}
-                  className="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  className="w-full flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
                 >
                   <Settings className="w-4 h-4 mr-3" />
                   Settings
                 </button>
               </div>
               
-              <div className="border-t border-gray-200 py-2">
+              <div className="border-t border-gray-200 dark:border-gray-700 py-2">
                 <button
                   onClick={() => {
                     onLogout();
                     setShowUserMenu(false);
                   }}
-                  className="w-full flex items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                  className="w-full flex items-center px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
                 >
                   <LogOut className="w-4 h-4 mr-3" />
                   Logout

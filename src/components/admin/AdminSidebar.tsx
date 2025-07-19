@@ -125,7 +125,7 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({
   const hasPermission = (resource: keyof AdminPermissions, action: string): boolean => {
     const resourcePermissions = permissions[resource];
     if (!resourcePermissions) return false;
-    return (resourcePermissions as any)[action] === true;
+    return (resourcePermissions as Record<string, boolean>)[action] === true;
   };
 
   const isMenuItemVisible = (item: MenuItem): boolean => {

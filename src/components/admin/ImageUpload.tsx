@@ -2,7 +2,6 @@ import React, { useState, useRef, useCallback } from 'react';
 import { 
   Upload, 
   X, 
-  Image as ImageIcon, 
   Loader2, 
   AlertCircle,
   Check,

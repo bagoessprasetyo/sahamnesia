@@ -67,7 +67,7 @@ const Contact: React.FC<ContactPageProps> = ({ onNavigate }) => {
         message: "",
         inquiryType: "general"
       });
-    } catch (error) {
+    } catch {
       setSubmitStatus('error');
     } finally {
       setIsSubmitting(false);

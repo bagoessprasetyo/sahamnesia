@@ -12,6 +12,28 @@ export interface BlogAuthor {
   updated_at: string;
 }
 
+export interface BlogAuthorCreate {
+  name: string;
+  slug?: string;
+  bio?: string;
+  avatar_url?: string;
+  role: string;
+  email?: string;
+  social_links?: Record<string, string>;
+  is_active?: boolean;
+}
+
+export interface BlogAuthorUpdate {
+  name?: string;
+  slug?: string;
+  bio?: string;
+  avatar_url?: string;
+  role?: string;
+  email?: string;
+  social_links?: Record<string, string>;
+  is_active?: boolean;
+}
+
 export interface BlogCategory {
   id: number;
   name: string;
@@ -22,6 +44,24 @@ export interface BlogCategory {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+}
+
+export interface BlogCategoryCreate {
+  name: string;
+  slug?: string;
+  description?: string;
+  color: string;
+  icon?: string;
+  is_active?: boolean;
+}
+
+export interface BlogCategoryUpdate {
+  name?: string;
+  slug?: string;
+  description?: string;
+  color?: string;
+  icon?: string;
+  is_active?: boolean;
 }
 
 export interface BlogPost {

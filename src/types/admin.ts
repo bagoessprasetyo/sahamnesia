@@ -122,6 +122,22 @@ export interface AdminNotification {
   created_at: string;
 }
 
+export interface AdminUserCreate {
+  email: string;
+  name: string;
+  role: AdminRole;
+  avatar_url?: string;
+  password: string;
+}
+
+export interface AdminUserUpdate {
+  name?: string;
+  role?: AdminRole;
+  avatar_url?: string;
+  is_active?: boolean;
+  password?: string;
+}
+
 // Content Management Interfaces
 export interface ContentFilters {
   status?: 'all' | 'draft' | 'published' | 'archived';

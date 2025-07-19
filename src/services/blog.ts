@@ -8,7 +8,11 @@ import {
   BlogPostWithRelations,
   BlogPostCreate,
   BlogPostUpdate,
-  BlogStats
+  BlogStats,
+  BlogCategoryCreate,
+  BlogCategoryUpdate,
+  BlogAuthorCreate,
+  BlogAuthorUpdate
 } from '@/types/blog';
 
 export class BlogService {
@@ -514,6 +518,371 @@ export class BlogService {
       console.error('Error deleting blog post:', error);
       throw error;
     }
+  }
+
+  // =================== CATEGORY MANAGEMENT ===================
+
+  /**
+   * Get all blog categories (including inactive)
+   */
+  async getAllBlogCategories(): Promise<BlogCategory[]> {
+    try {
+      const { data, error } = await supabase
+        .from('blog_categories')
+        .select('*')
+        .order('name');
+
+      if (error) {
+        throw new Error(`Failed to fetch all blog categories: ${error.message}`);
+      }
+
+      return data || [];
+    } catch (error) {
+      console.error('Error fetching all blog categories:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get blog category by ID
+   */
+  async getBlogCategoryById(id: number): Promise<BlogCategory | null> {
+    try {
+      const { data, error } = await supabase
+        .from('blog_categories')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (error) {
+        if (error.code === 'PGRST116') return null; // Not found
+        throw new Error(`Failed to fetch blog category: ${error.message}`);
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Error fetching blog category:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Create a new blog category
+   */
+  async createBlogCategory(categoryData: BlogCategoryCreate): Promise<BlogCategory> {
+    try {
+      // Generate slug if not provided
+      const slug = categoryData.slug || this.generateSlug(categoryData.name);
+      
+      const { data, error } = await supabase
+        .from('blog_categories')
+        .insert({
+          ...categoryData,
+          slug,
+          is_active: categoryData.is_active ?? true
+        })
+        .select()
+        .single();
+
+      if (error) {
+        throw new Error(`Failed to create blog category: ${error.message}`);
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Error creating blog category:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Update a blog category
+   */
+  async updateBlogCategory(id: number, categoryData: BlogCategoryUpdate): Promise<BlogCategory> {
+    try {
+      // Generate slug if name is being updated and slug is not provided
+      const updateData = { ...categoryData };
+      if (categoryData.name && !categoryData.slug) {
+        updateData.slug = this.generateSlug(categoryData.name);
+      }
+
+      const { data, error } = await supabase
+        .from('blog_categories')
+        .update(updateData)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) {
+        throw new Error(`Failed to update blog category: ${error.message}`);
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Error updating blog category:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Delete a blog category
+   */
+  async deleteBlogCategory(id: number): Promise<void> {
+    try {
+      // Check if category is used by any posts
+      const { data: posts, error: postsError } = await supabase
+        .from('blog_posts')
+        .select('id')
+        .eq('category_id', id)
+        .limit(1);
+
+      if (postsError) {
+        throw new Error(`Failed to check category usage: ${postsError.message}`);
+      }
+
+      if (posts && posts.length > 0) {
+        throw new Error('Cannot delete category that is used by existing posts. Please reassign or delete those posts first.');
+      }
+
+      const { error } = await supabase
+        .from('blog_categories')
+        .delete()
+        .eq('id', id);
+
+      if (error) {
+        throw new Error(`Failed to delete blog category: ${error.message}`);
+      }
+    } catch (error) {
+      console.error('Error deleting blog category:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get category usage statistics
+   */
+  async getCategoryStats(): Promise<Array<{ category: BlogCategory; post_count: number }>> {
+    try {
+      const { data, error } = await supabase
+        .from('blog_categories')
+        .select(`
+          *,
+          blog_posts(count)
+        `);
+
+      if (error) {
+        throw new Error(`Failed to fetch category stats: ${error.message}`);
+      }
+
+      return (data || []).map(item => ({
+        category: {
+          id: item.id,
+          name: item.name,
+          slug: item.slug,
+          description: item.description,
+          color: item.color,
+          icon: item.icon,
+          is_active: item.is_active,
+          created_at: item.created_at,
+          updated_at: item.updated_at
+        },
+        post_count: item.blog_posts?.[0]?.count || 0
+      }));
+    } catch (error) {
+      console.error('Error fetching category stats:', error);
+      throw error;
+    }
+  }
+
+  // =================== AUTHOR MANAGEMENT ===================
+
+  /**
+   * Get all blog authors (including inactive)
+   */
+  async getAllBlogAuthors(): Promise<BlogAuthor[]> {
+    try {
+      const { data, error } = await supabase
+        .from('blog_authors')
+        .select('*')
+        .order('name');
+
+      if (error) {
+        throw new Error(`Failed to fetch all blog authors: ${error.message}`);
+      }
+
+      return data || [];
+    } catch (error) {
+      console.error('Error fetching all blog authors:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get blog author by ID
+   */
+  async getBlogAuthorById(id: number): Promise<BlogAuthor | null> {
+    try {
+      const { data, error } = await supabase
+        .from('blog_authors')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (error) {
+        if (error.code === 'PGRST116') return null; // Not found
+        throw new Error(`Failed to fetch blog author: ${error.message}`);
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Error fetching blog author:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Create a new blog author
+   */
+  async createBlogAuthor(authorData: BlogAuthorCreate): Promise<BlogAuthor> {
+    try {
+      // Generate slug if not provided
+      const slug = authorData.slug || this.generateSlug(authorData.name);
+      
+      const { data, error } = await supabase
+        .from('blog_authors')
+        .insert({
+          ...authorData,
+          slug,
+          is_active: authorData.is_active ?? true,
+          social_links: authorData.social_links || {}
+        })
+        .select()
+        .single();
+
+      if (error) {
+        throw new Error(`Failed to create blog author: ${error.message}`);
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Error creating blog author:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Update a blog author
+   */
+  async updateBlogAuthor(id: number, authorData: BlogAuthorUpdate): Promise<BlogAuthor> {
+    try {
+      // Generate slug if name is being updated and slug is not provided
+      const updateData = { ...authorData };
+      if (authorData.name && !authorData.slug) {
+        updateData.slug = this.generateSlug(authorData.name);
+      }
+
+      const { data, error } = await supabase
+        .from('blog_authors')
+        .update(updateData)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) {
+        throw new Error(`Failed to update blog author: ${error.message}`);
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Error updating blog author:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Delete a blog author
+   */
+  async deleteBlogAuthor(id: number): Promise<void> {
+    try {
+      // Check if author is used by any posts
+      const { data: posts, error: postsError } = await supabase
+        .from('blog_posts')
+        .select('id')
+        .eq('author_id', id)
+        .limit(1);
+
+      if (postsError) {
+        throw new Error(`Failed to check author usage: ${postsError.message}`);
+      }
+
+      if (posts && posts.length > 0) {
+        throw new Error('Cannot delete author who has written posts. Please reassign or delete those posts first.');
+      }
+
+      const { error } = await supabase
+        .from('blog_authors')
+        .delete()
+        .eq('id', id);
+
+      if (error) {
+        throw new Error(`Failed to delete blog author: ${error.message}`);
+      }
+    } catch (error) {
+      console.error('Error deleting blog author:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get author usage statistics
+   */
+  async getAuthorStats(): Promise<Array<{ author: BlogAuthor; post_count: number }>> {
+    try {
+      const { data, error } = await supabase
+        .from('blog_authors')
+        .select(`
+          *,
+          blog_posts(count)
+        `);
+
+      if (error) {
+        throw new Error(`Failed to fetch author stats: ${error.message}`);
+      }
+
+      return (data || []).map(item => ({
+        author: {
+          id: item.id,
+          name: item.name,
+          slug: item.slug,
+          bio: item.bio,
+          avatar_url: item.avatar_url,
+          role: item.role,
+          email: item.email,
+          social_links: item.social_links || {},
+          is_active: item.is_active,
+          created_at: item.created_at,
+          updated_at: item.updated_at
+        },
+        post_count: item.blog_posts?.[0]?.count || 0
+      }));
+    } catch (error) {
+      console.error('Error fetching author stats:', error);
+      throw error;
+    }
+  }
+
+  // =================== UTILITY METHODS ===================
+
+  /**
+   * Generate URL-friendly slug from text
+   */
+  private generateSlug(text: string): string {
+    return text
+      .toLowerCase()
+      .trim()
+      .replace(/[^\w\s-]/g, '') // Remove special characters
+      .replace(/[\s_-]+/g, '-') // Replace spaces and underscores with hyphens
+      .replace(/^-+|-+$/g, ''); // Remove leading/trailing hyphens
   }
 }
 

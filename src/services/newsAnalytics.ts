@@ -64,7 +64,12 @@ Berikan analisis dalam format JSON dengan struktur:
 Pastikan total persentase = 100%. Fokus pada sentimen terhadap pasar saham Indonesia (IHSG/IDX).`;
 
       const response = await openAIService.sendMessage([
-        { role: 'user', content: prompt }
+        { 
+          id: 'sentiment-' + Date.now(),
+          role: 'user', 
+          content: prompt,
+          timestamp: new Date()
+        }
       ]);
 
       // Parse the JSON response
@@ -160,7 +165,12 @@ Format response dalam JSON:
 Pastikan judul menarik perhatian tapi tetap akurat.`;
 
       const response = await openAIService.sendMessage([
-        { role: 'user', content: prompt }
+        { 
+          id: 'trending-' + Date.now(),
+          role: 'user', 
+          content: prompt,
+          timestamp: new Date()
+        }
       ]);
 
       // Parse the JSON response
@@ -223,7 +233,12 @@ Berikan analisis dalam format JSON:
 }`;
 
       const response = await openAIService.sendMessage([
-        { role: 'user', content: prompt }
+        { 
+          id: 'impact-' + Date.now(),
+          role: 'user', 
+          content: prompt,
+          timestamp: new Date()
+        }
       ]);
 
       const analysisMatch = response.match(/\{[\s\S]*\}/);
@@ -262,7 +277,7 @@ Berikan analisis dalam format JSON:
       const stockPattern = /\b[A-Z]{4}\b/g; // 4-letter stock codes
       
       financialTerms.forEach(term => {
-        if (article.title.toLowerCase().includes(term)) score += 5;
+        if (article.title?.toLowerCase().includes(term)) score += 5;
       });
       
       if (stockPattern.test(article.title)) score += 10;
@@ -310,6 +325,13 @@ Berikan analisis dalam format JSON:
     }
     
     return keywordList[0] || 'Umum';
+  }
+
+  /**
+   * Get market sentiment - wrapper for analyzeMarketSentiment
+   */
+  async getMarketSentiment(articles: Article[]): Promise<MarketSentiment> {
+    return this.analyzeMarketSentiment(articles);
   }
 
   /**

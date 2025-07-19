@@ -1,59 +1,22 @@
 import React, { useState, useEffect } from 'react';
-import { AdminUser, AdminPermissions, AdminNotification } from '@/types/admin';
+import { AdminUser, AdminPermissions } from '@/types/admin';
 import { adminService } from '@/services/admin';
 import AdminLayout from '@/components/admin/AdminLayout';
+import { ThemeProvider } from '@/contexts/ThemeContext';
+import { NotificationProvider } from '@/contexts/NotificationContext';
 import AdminDashboard from './AdminDashboard';
 import AdminLogin from './AdminLogin';
 import BlogPostsList from './BlogPostsList';
 import BlogPostForm from './BlogPostForm';
 import MediaLibrary from './MediaLibrary';
 import AdminNews from './AdminNews';
-
-// Placeholder components - these will be implemented next
-
-const AdminCategories = () => (
-  <div className="bg-white rounded-xl border p-6">
-    <h1 className="text-2xl font-bold mb-4">Categories Management</h1>
-    <p className="text-gray-600">Categories management interface will be implemented here.</p>
-  </div>
-);
-
-const AdminAuthors = () => (
-  <div className="bg-white rounded-xl border p-6">
-    <h1 className="text-2xl font-bold mb-4">Authors Management</h1>
-    <p className="text-gray-600">Authors management interface will be implemented here.</p>
-  </div>
-);
-
-
-
-const AdminAnalytics = () => (
-  <div className="bg-white rounded-xl border p-6">
-    <h1 className="text-2xl font-bold mb-4">Analytics</h1>
-    <p className="text-gray-600">Analytics interface will be implemented here.</p>
-  </div>
-);
-
-const AdminUsers = () => (
-  <div className="bg-white rounded-xl border p-6">
-    <h1 className="text-2xl font-bold mb-4">Admin Users</h1>
-    <p className="text-gray-600">Admin users management interface will be implemented here.</p>
-  </div>
-);
-
-const AdminNotifications = () => (
-  <div className="bg-white rounded-xl border p-6">
-    <h1 className="text-2xl font-bold mb-4">Notifications</h1>
-    <p className="text-gray-600">Notifications interface will be implemented here.</p>
-  </div>
-);
-
-const AdminSettings = () => (
-  <div className="bg-white rounded-xl border p-6">
-    <h1 className="text-2xl font-bold mb-4">Settings</h1>
-    <p className="text-gray-600">Settings interface will be implemented here.</p>
-  </div>
-);
+import AdminCategories from './AdminCategories';
+import AdminAuthors from './AdminAuthors';
+import AdminAnalytics from './AdminAnalytics';
+import AdminUsers from './AdminUsers';
+import AdminNotifications from './AdminNotifications';
+import AdminSettings from './AdminSettings';
+import AdminProfile from './AdminProfile';
 
 interface AdminAppProps {
   onNavigateToMain?: (page: string) => void;
@@ -62,7 +25,6 @@ interface AdminAppProps {
 const AdminApp: React.FC<AdminAppProps> = ({ onNavigateToMain }) => {
   const [currentAdmin, setCurrentAdmin] = useState<AdminUser | null>(null);
   const [permissions, setPermissions] = useState<AdminPermissions | null>(null);
-  const [notifications, setNotifications] = useState<AdminNotification[]>([]);
   const [currentPath, setCurrentPath] = useState('/admin/dashboard');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -75,7 +37,6 @@ const AdminApp: React.FC<AdminAppProps> = ({ onNavigateToMain }) => {
         if (admin) {
           setCurrentAdmin(admin);
           setPermissions(adminService.getCurrentPermissions());
-          await loadNotifications();
         }
       } catch (err) {
         console.error('Session verification failed:', err);
@@ -108,14 +69,6 @@ const AdminApp: React.FC<AdminAppProps> = ({ onNavigateToMain }) => {
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
-  const loadNotifications = async () => {
-    try {
-      const notifications = await adminService.getAdminNotifications();
-      setNotifications(notifications);
-    } catch (err) {
-      console.error('Failed to load notifications:', err);
-    }
-  };
 
   const handleLogin = async (email: string, password: string) => {
     try {
@@ -125,8 +78,6 @@ const AdminApp: React.FC<AdminAppProps> = ({ onNavigateToMain }) => {
       setCurrentAdmin(response.user);
       setPermissions(response.permissions);
       setCurrentPath('/admin/dashboard');
-      
-      await loadNotifications();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
       throw err;
@@ -138,7 +89,6 @@ const AdminApp: React.FC<AdminAppProps> = ({ onNavigateToMain }) => {
       await adminService.logout();
       setCurrentAdmin(null);
       setPermissions(null);
-      setNotifications([]);
       setCurrentPath('/admin/dashboard');
       
       // Navigate back to main site
@@ -165,7 +115,7 @@ const AdminApp: React.FC<AdminAppProps> = ({ onNavigateToMain }) => {
   };
 
   const handleRefresh = async () => {
-    await loadNotifications();
+    // Refresh data - can be implemented later if needed
   };
 
   const renderCurrentPage = () => {
@@ -186,21 +136,23 @@ const AdminApp: React.FC<AdminAppProps> = ({ onNavigateToMain }) => {
       case '/admin/blog/create':
         return <BlogPostForm currentAdmin={currentAdmin} onNavigate={handleNavigate} />;
       case '/admin/categories':
-        return <AdminCategories />;
+        return <AdminCategories currentAdmin={currentAdmin} onNavigate={handleNavigate} />;
       case '/admin/authors':
-        return <AdminAuthors />;
+        return <AdminAuthors currentAdmin={currentAdmin} onNavigate={handleNavigate} />;
       case '/admin/media':
         return <MediaLibrary onNavigate={handleNavigate} />;
       case '/admin/news':
         return <AdminNews currentAdmin={currentAdmin} onNavigate={handleNavigate} />;
       case '/admin/analytics':
-        return <AdminAnalytics />;
+        return <AdminAnalytics currentAdmin={currentAdmin} onNavigate={handleNavigate} />;
       case '/admin/users':
-        return <AdminUsers />;
+        return <AdminUsers currentAdmin={currentAdmin} onNavigate={handleNavigate} />;
       case '/admin/notifications':
-        return <AdminNotifications />;
+        return <AdminNotifications currentAdmin={currentAdmin} onNavigate={handleNavigate} />;
       case '/admin/settings':
-        return <AdminSettings />;
+        return <AdminSettings currentAdmin={currentAdmin} onNavigate={handleNavigate} />;
+      case '/admin/profile':
+        return <AdminProfile currentAdmin={currentAdmin} permissions={permissions} onNavigate={handleNavigate} />;
       default:
         return <AdminDashboard currentAdmin={currentAdmin} onNavigate={handleNavigate} />;
     }
@@ -229,17 +181,20 @@ const AdminApp: React.FC<AdminAppProps> = ({ onNavigateToMain }) => {
   }
 
   return (
-    <AdminLayout
-      currentAdmin={currentAdmin}
-      permissions={permissions}
-      notifications={notifications}
-      currentPath={currentPath}
-      onNavigate={handleNavigate}
-      onLogout={handleLogout}
-      onRefresh={handleRefresh}
-    >
-      {renderCurrentPage()}
-    </AdminLayout>
+    <ThemeProvider>
+      <NotificationProvider adminId={currentAdmin.id}>
+        <AdminLayout
+          currentAdmin={currentAdmin}
+          permissions={permissions}
+          currentPath={currentPath}
+          onNavigate={handleNavigate}
+          onLogout={handleLogout}
+          onRefresh={handleRefresh}
+        >
+          {renderCurrentPage()}
+        </AdminLayout>
+      </NotificationProvider>
+    </ThemeProvider>
   );
 };
 

@@ -1,6 +1,6 @@
 import React from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { TrendingUp, TrendingDown, DollarSign, Award, Target } from "lucide-react";
+import { TrendingUp, DollarSign, Award, Target } from "lucide-react";
 
 interface StockPerformance {
   symbol: string;

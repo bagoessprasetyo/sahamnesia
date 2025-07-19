@@ -69,7 +69,7 @@ export default function StockWidgets() {
                 </tr>
               </thead>
               <tbody>
-                {TOP_10.map((s, i) => (
+                {TOP_10.map((s) => (
                   <tr key={s.code} className="border-b last:border-b-0">
                     <td className="pr-2 font-semibold text-blue-800">{s.code}</td>
                     <td className="pr-2">{s.name}</td>

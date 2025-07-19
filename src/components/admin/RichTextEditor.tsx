@@ -2,7 +2,6 @@ import React, { useRef, useMemo, useState, useCallback } from 'react';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
 import { 
-  Image as ImageIcon, 
   Maximize2, 
   Minimize2, 
   Type, 

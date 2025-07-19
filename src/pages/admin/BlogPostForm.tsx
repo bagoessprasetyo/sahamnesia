@@ -84,8 +84,8 @@ const BlogPostForm: React.FC<BlogPostFormProps> = ({ currentAdmin, postId, onNav
         setError(null);
 
         const [categoriesData, authorsData] = await Promise.all([
-          blogService.getBlogCategories(),
-          blogService.getBlogAuthors()
+          blogService.getAllBlogCategories(),
+          blogService.getAllBlogAuthors()
         ]);
 
         setCategories(categoriesData);

@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { AdminUser, AdminPermissions, AdminNotification } from '@/types/admin';
+import { AdminUser, AdminPermissions } from '@/types/admin';
 import AdminSidebar from './AdminSidebar';
 import AdminHeader from './AdminHeader';
 
 interface AdminLayoutProps {
   currentAdmin: AdminUser;
   permissions: AdminPermissions;
-  notifications: AdminNotification[];
   currentPath: string;
   onNavigate: (path: string) => void;
   onLogout: () => void;
@@ -17,7 +16,6 @@ interface AdminLayoutProps {
 const AdminLayout: React.FC<AdminLayoutProps> = ({
   currentAdmin,
   permissions,
-  notifications,
   currentPath,
   onNavigate,
   onLogout,
@@ -59,7 +57,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
   };
 
   return (
-    <div className="h-screen flex overflow-hidden bg-gray-50">
+    <div className="h-screen flex overflow-hidden bg-gray-50 dark:bg-gray-900">
       {/* Mobile Sidebar Overlay */}
       {isMobile && isMobileSidebarOpen && (
         <div 
@@ -90,7 +88,6 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
         {/* Header */}
         <AdminHeader
           currentAdmin={currentAdmin}
-          notifications={notifications}
           currentPath={currentPath}
           onNavigate={onNavigate}
           onLogout={onLogout}
@@ -106,8 +103,8 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
         </main>
 
         {/* Footer */}
-        <footer className="bg-white border-t border-gray-200 px-6 py-4">
-          <div className="flex items-center justify-between text-sm text-gray-500">
+        <footer className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 px-6 py-4">
+          <div className="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400">
             <p>
               © 2024 Sahamnesia. All rights reserved.
             </p>
@@ -116,14 +113,14 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
               <span>•</span>
               <button 
                 onClick={() => window.open('https://docs.sahamnesia.com', '_blank')}
-                className="hover:text-gray-700 transition-colors"
+                className="hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
               >
                 Documentation
               </button>
               <span>•</span>
               <button 
                 onClick={() => window.open('mailto:support@sahamnesia.com')}
-                className="hover:text-gray-700 transition-colors"
+                className="hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
               >
                 Support
               </button>

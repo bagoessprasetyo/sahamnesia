@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { ArrowLeft, Calendar, Clock, User, Eye, MessageCircle, Share2, Tag, ChevronRight, TrendingUp, TrendingDown } from "lucide-react";
+import { ArrowLeft, Calendar, Clock, User, Eye, MessageCircle, Share2, ChevronRight, TrendingUp, TrendingDown } from "lucide-react";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
@@ -139,7 +139,6 @@ const NewsDetail: React.FC<NewsDetailProps> = ({ articleId, onNavigate }) => {
 
   const readingTime = calculateReadingTime(article.content || '');
   const publishDate = formatDate(article.date_post || article.created_at);
-  const tags = getTags(article.keywords);
   const category = getCategory(article.keywords);
   const trending = getTrendingInfo();
 

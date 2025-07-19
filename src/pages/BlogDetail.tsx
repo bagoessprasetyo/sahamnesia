@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { ArrowLeft, Calendar, Clock, User, Eye, MessageCircle, Share2, Tag, ChevronRight } from "lucide-react";
+import { ArrowLeft, Calendar, Clock, User, Eye, MessageCircle, Share2, ChevronRight } from "lucide-react";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
@@ -120,7 +120,6 @@ const BlogDetail: React.FC<BlogDetailProps> = ({ articleId, onNavigate }) => {
 
   const readingTime = calculateReadingTime(article.content || '');
   const publishDate = formatDate(article.published_at || article.created_at);
-  const tags = getTags(article.tags?.toString() || null);
 
   return (
     <div className="min-h-screen bg-gray-50">

@@ -2,14 +2,12 @@ import React, { useState, useEffect } from "react";
 import { 
   ArrowUpRight, 
   ChevronRight, 
-  Clock, 
   TrendingDown, 
   TrendingUp, 
   Bell,
   Filter,
   Search,
   Calendar,
-  RefreshCw,
   Loader2,
   AlertCircle
 } from "lucide-react";
@@ -192,48 +190,6 @@ const News: React.FC<MarketNewsProps> = ({ onNavigate }) => {
     return { name: cat, count };
   });
 
-  const marketData: MarketData[] = [
-    {
-      name: "IHSG",
-      symbol: "IDX Composite",
-      price: "7,245.65",
-      change: "+54.32",
-      changePercent: "+0.75%",
-      trending: "up"
-    },
-    {
-      name: "USD/IDR",
-      symbol: "USD/IDR",
-      price: "15,675.50",
-      change: "-18.25",
-      changePercent: "-0.12%",
-      trending: "down"
-    },
-    {
-      name: "BBCA",
-      symbol: "Bank BCA",
-      price: "9,725",
-      change: "+50",
-      changePercent: "+0.52%",
-      trending: "up"
-    },
-    {
-      name: "TLKM",
-      symbol: "Telkom",
-      price: "3,950",
-      change: "+50",
-      changePercent: "+1.28%",
-      trending: "up"
-    },
-    {
-      name: "ASII",
-      symbol: "Astra",
-      price: "4,570",
-      change: "-30",
-      changePercent: "-0.65%",
-      trending: "down"
-    }
-  ];
 
   // Convert articles to news articles
   const newsArticles = articles.map(convertArticleToNews);
