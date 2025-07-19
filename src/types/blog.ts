@@ -62,11 +62,13 @@ export interface BlogFilters {
   author?: string;
   tags?: string[];
   search?: string;
-  status?: 'draft' | 'published' | 'archived';
+  status?: 'draft' | 'published' | 'archived' | 'all';
   is_featured?: boolean;
   is_premium?: boolean;
   limit?: number;
   offset?: number;
+  sort_by?: 'created_at' | 'updated_at' | 'published_at' | 'title' | 'view_count';
+  sort_order?: 'asc' | 'desc';
 }
 
 export interface BlogResponse {

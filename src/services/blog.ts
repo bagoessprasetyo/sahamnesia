@@ -25,7 +25,9 @@ export class BlogService {
       is_featured,
       is_premium,
       limit = 10, 
-      offset = 0 
+      offset = 0,
+      sort_by = 'created_at',
+      sort_order = 'desc'
     } = filters;
 
     try {
@@ -35,9 +37,15 @@ export class BlogService {
           *,
           author:blog_authors(*),
           category:blog_categories(*)
-        `, { count: 'exact' })
-        .eq('status', status)
-        .order('published_at', { ascending: false });
+        `, { count: 'exact' });
+
+      // Apply status filter (handle 'all' status)
+      if (status && status !== 'all') {
+        query = query.eq('status', status);
+      }
+
+      // Apply sorting
+      query = query.order(sort_by, { ascending: sort_order === 'asc' });
 
       // Apply search filter
       if (search) {
