@@ -66,6 +66,25 @@ export class ArticleService {
     }
   }
 
+   async getBlogById(id: number): Promise<Article | null> {
+    try {
+      const { data, error } = await supabase
+        .from('blog_posts')
+        .select('*')
+        .eq('id', id)
+        .single()
+
+      if (error) {
+        throw new Error(`Failed to fetch article: ${error.message}`)
+      }
+
+      return data
+    } catch (error) {
+      console.error('Error fetching article by ID:', error)
+      throw error
+    }
+  }
+
   /**
    * Get featured articles (latest or most popular)
    */
@@ -183,6 +202,61 @@ export class ArticleService {
       return data || []
     } catch (error) {
       console.error('Error fetching recent articles:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Increment view count for an article (client-side tracking)
+   */
+  async incrementViewCount(articleId: number): Promise<void> {
+    try {
+      // In a real implementation, you might want to:
+      // 1. Track views in a separate table to avoid too many updates
+      // 2. Use a queue/batch system to reduce database load
+      // 3. Add rate limiting to prevent spam
+      
+      // For now, we'll just log it and potentially store in localStorage
+      const viewKey = `article_view_${articleId}`;
+      const lastViewed = localStorage.getItem(viewKey);
+      const now = Date.now();
+      
+      // Only count as a view if it hasn't been viewed in the last hour
+      if (!lastViewed || now - parseInt(lastViewed) > 60 * 60 * 1000) {
+        localStorage.setItem(viewKey, now.toString());
+        console.log(`Article ${articleId} view recorded`);
+        
+        // Here you could make an API call to increment the view count
+        // await supabase.from('article_views').insert({ article_id: articleId, viewed_at: new Date() });
+      }
+    } catch (error) {
+      console.error('Error tracking article view:', error);
+      // Don't throw error for view tracking failures
+    }
+  }
+
+  /**
+   * Get most viewed articles (mock implementation)
+   */
+  async getMostViewedArticles(limit: number = 5): Promise<Article[]> {
+    try {
+      // In a real implementation, you would query by view count
+      // For now, we'll just return recent articles as a fallback
+      const { data, error } = await supabase
+        .from('articles')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(limit * 2); // Get more articles to simulate variety
+
+      if (error) {
+        throw new Error(`Failed to fetch most viewed articles: ${error.message}`)
+      }
+
+      // Simulate view-based sorting by shuffling and taking the limit
+      const shuffled = (data || []).sort(() => Math.random() - 0.5);
+      return shuffled.slice(0, limit);
+    } catch (error) {
+      console.error('Error fetching most viewed articles:', error)
       throw error
     }
   }

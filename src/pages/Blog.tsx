@@ -2,10 +2,10 @@ import React, { useState, useEffect } from "react";
 import { ArrowRight, Search, Clock, TrendingUp, Calendar, Eye, MessageCircle, Loader2, AlertCircle } from "lucide-react";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
-import { articleService } from "@/services/articles";
-import { Article } from "@/types/article";
+import { blogService } from "@/services/blog";
+import { BlogPost, BlogCategory } from "@/types/blog";
 
-interface BlogPost {
+interface DisplayBlogPost {
   id: string;
   title: string;
   excerpt: string;
@@ -30,49 +30,46 @@ interface BlogProps {
   onNavigate?: (page: string, articleId?: string) => void;
 }
 
-// Helper function to convert Article to BlogPost
-const convertArticleToBlogPost = (article: Article): BlogPost => {
-  const tags = article.keywords ? article.keywords.split(',').map(k => k.trim()) : [];
-  const defaultAuthor = {
-    name: article.author || 'Tim Sahamnesia',
-    avatar: 'https://images.pexels.com/photos/415829/pexels-photo-415829.jpeg?auto=compress&cs=tinysrgb&w=100',
-    role: 'Analyst'
-  };
-  
+// Helper function to convert BlogPost to DisplayBlogPost
+const convertBlogPostToDisplay = (post: BlogPost): DisplayBlogPost => {
   return {
-    id: article.id.toString(),
-    title: article.title || 'Untitled Article',
-    excerpt: article.description || 'No description available',
-    content: article.content || '',
-    category: tags[0] || 'Analisis Saham',
-    author: defaultAuthor,
-    publishedDate: article.date_post ? new Date(article.date_post).toLocaleDateString('id-ID', {
+    id: post.id.toString(),
+    title: post.title,
+    excerpt: post.excerpt || 'No description available',
+    content: post.content || '',
+    category: post.category?.name || 'Uncategorized',
+    author: {
+      name: post.author?.name || 'Tim Sahamnesia',
+      avatar: post.author?.avatar_url || 'https://images.pexels.com/photos/415829/pexels-photo-415829.jpeg',
+      role: post.author?.role || 'Author'
+    },
+    publishedDate: post.published_at ? new Date(post.published_at).toLocaleDateString('id-ID', {
       year: 'numeric',
       month: 'long',
       day: 'numeric'
-    }) : new Date(article.created_at).toLocaleDateString('id-ID', {
+    }) : new Date(post.created_at).toLocaleDateString('id-ID', {
       year: 'numeric',
       month: 'long',
       day: 'numeric'
     }),
-    readTime: Math.ceil((article.content?.length || 0) / 200) + ' menit',
-    imageUrl: article.image_url || 'https://images.pexels.com/photos/7567443/pexels-photo-7567443.jpeg',
-    tags: tags.slice(0, 3),
-    isPremium: false,
-    views: Math.floor(Math.random() * 2000) + 100,
-    comments: Math.floor(Math.random() * 50) + 1
+    readTime: (post.reading_time || 5) + ' menit',
+    imageUrl: post.featured_image_url || 'https://images.pexels.com/photos/7567443/pexels-photo-7567443.jpeg',
+    tags: post.tags?.slice(0, 3) || [],
+    isPremium: post.is_premium,
+    views: post.view_count,
+    comments: post.comment_count
   };
 };
 
 const Blog: React.FC<BlogProps> = ({ onNavigate }) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("Semua");
-  const [articles, setArticles] = useState<Article[]>([]);
-  const [featuredArticle, setFeaturedArticle] = useState<Article | null>(null);
-  const [categories, setCategories] = useState<string[]>([]);
+  const [blogPosts, setBlogPosts] = useState<BlogPost[]>([]);
+  const [featuredPost, setFeaturedPost] = useState<BlogPost | null>(null);
+  const [categories, setCategories] = useState<BlogCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [searchResults, setSearchResults] = useState<Article[]>([]);
+  const [searchResults, setSearchResults] = useState<BlogPost[]>([]);
   const [isSearching, setIsSearching] = useState(false);
 
   // Load articles and categories on component mount
@@ -82,16 +79,16 @@ const Blog: React.FC<BlogProps> = ({ onNavigate }) => {
         setLoading(true);
         setError(null);
         
-        // Load articles and featured article
-        const [articlesResponse, featuredArticles, categoriesData] = await Promise.all([
-          articleService.getArticles({ limit: 20 }),
-          articleService.getFeaturedArticles(1),
-          articleService.getCategories()
+        // Load blog posts and featured post
+        const [postsResponse, featuredPosts, categoriesData] = await Promise.all([
+          blogService.getBlogPosts({ limit: 20 }),
+          blogService.getFeaturedBlogPosts(1),
+          blogService.getBlogCategories()
         ]);
         
-        setArticles(articlesResponse.data);
-        setFeaturedArticle(featuredArticles[0] || null);
-        setCategories(['Semua', ...categoriesData.slice(0, 10)]);
+        setBlogPosts(postsResponse.data);
+        setFeaturedPost(featuredPosts[0] || null);
+        setCategories(categoriesData);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load articles');
       } finally {
@@ -113,7 +110,7 @@ const Blog: React.FC<BlogProps> = ({ onNavigate }) => {
       
       try {
         setIsSearching(true);
-        const results = await articleService.searchArticles(searchQuery, 10);
+        const results = await blogService.searchBlogPosts(searchQuery, 10);
         setSearchResults(results);
       } catch (err) {
         console.error('Search error:', err);
@@ -126,38 +123,38 @@ const Blog: React.FC<BlogProps> = ({ onNavigate }) => {
     return () => clearTimeout(debounceTimer);
   }, [searchQuery]);
   
-  const categoriesWithCount = categories.map(cat => ({
-    name: cat,
-    count: cat === 'Semua' ? articles.length : articles.filter(article => 
-      article.keywords?.toLowerCase().includes(cat.toLowerCase())
-    ).length
-  }));
+  const categoriesWithCount = [
+    { name: 'Semua', count: blogPosts.length },
+    ...categories.map(cat => ({
+      name: cat.name,
+      count: blogPosts.filter(post => post.category_id === cat.id).length
+    }))
+  ];
 
-  // Get featured post
-  const featuredPost: BlogPost | null = featuredArticle ? convertArticleToBlogPost(featuredArticle) : null;
+  // Get featured post for display
+  const featuredPostDisplay: DisplayBlogPost | null = featuredPost ? convertBlogPostToDisplay(featuredPost) : null;
 
-  // Convert articles to blog posts
-  const blogPosts: BlogPost[] = articles.map(convertArticleToBlogPost);
+  // Convert blog posts to display format
+  const displayPosts: DisplayBlogPost[] = blogPosts.map(convertBlogPostToDisplay);
   
   // Get filtered posts for display
   const getFilteredPosts = () => {
     if (searchQuery.trim()) {
-      return searchResults.map(convertArticleToBlogPost);
+      return searchResults.map(convertBlogPostToDisplay);
     }
     
     if (selectedCategory === "Semua") {
-      return blogPosts;
+      return displayPosts;
     }
     
-    return blogPosts.filter(post => 
-      post.category === selectedCategory || 
-      post.tags.some(tag => tag.toLowerCase().includes(selectedCategory.toLowerCase()))
+    return displayPosts.filter(post => 
+      post.category === selectedCategory
     );
   };
   
   const filteredPosts = getFilteredPosts();
 
-  const popularTags = categories.slice(1, 11); // Skip 'Semua' and take first 10
+  const popularTags = categories.slice(0, 10).map(cat => cat.name); // Take first 10 categories as tags
 
   // Loading state
   if (loading) {
@@ -235,28 +232,28 @@ const Blog: React.FC<BlogProps> = ({ onNavigate }) => {
           {/* Main Content */}
           <div className="lg:col-span-3">
             {/* Featured Article */}
-            {featuredPost && (
+            {featuredPostDisplay && (
               <section className="mb-16">
                 <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
                   <div className="relative">
                     <img
-                      src={featuredPost.imageUrl}
-                      alt={featuredPost.title}
+                      src={featuredPostDisplay.imageUrl}
+                      alt={featuredPostDisplay.title}
                       className="w-full h-64 md:h-80 object-cover"
                     />
                     <div className="absolute top-4 left-4 flex gap-2">
                       <span className="bg-blue-600 text-white px-3 py-1 rounded-full text-sm font-semibold">
                         Featured
                       </span>
-                      {featuredPost.isPremium && (
+                      {featuredPostDisplay.isPremium && (
                         <span className="bg-yellow-500 text-yellow-900 px-3 py-1 rounded-full text-sm font-semibold">
                           Premium
                         </span>
                       )}
-                      {featuredPost.profit && (
+                      {featuredPostDisplay.profit && (
                         <span className="bg-green-500 text-white px-3 py-1 rounded-full text-sm font-bold flex items-center">
                           <TrendingUp className="w-3 h-3 mr-1" />
-                          {featuredPost.profit}
+                          {featuredPostDisplay.profit}
                         </span>
                       )}
                     </div>
@@ -264,43 +261,43 @@ const Blog: React.FC<BlogProps> = ({ onNavigate }) => {
                   <div className="p-8">
                     <div className="flex items-center space-x-4 text-sm text-gray-600 mb-4">
                       <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-md font-medium">
-                        {featuredPost.category}
+                        {featuredPostDisplay.category}
                       </span>
                       <div className="flex items-center">
                         <Calendar className="w-4 h-4 mr-1" />
-                        {featuredPost.publishedDate}
+                        {featuredPostDisplay.publishedDate}
                       </div>
                       <div className="flex items-center">
                         <Clock className="w-4 h-4 mr-1" />
-                        {featuredPost.readTime}
+                        {featuredPostDisplay.readTime}
                       </div>
                     </div>
                     
                     <h2 className="text-3xl font-bold text-gray-900 mb-4">
-                      {featuredPost.title}
+                      {featuredPostDisplay.title}
                     </h2>
                     
                     <p className="text-gray-600 text-lg mb-6 leading-relaxed">
-                      {featuredPost.excerpt}
+                      {featuredPostDisplay.excerpt}
                     </p>
                     
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-3">
                         <img
-                          src={featuredPost.author.avatar}
-                          alt={featuredPost.author.name}
+                          src={featuredPostDisplay.author.avatar}
+                          alt={featuredPostDisplay.author.name}
                           className="w-10 h-10 rounded-full object-cover"
                         />
                         <div>
-                          <p className="font-semibold text-gray-900">{featuredPost.author.name}</p>
-                          <p className="text-sm text-gray-500">{featuredPost.author.role}</p>
+                          <p className="font-semibold text-gray-900">{featuredPostDisplay.author.name}</p>
+                          <p className="text-sm text-gray-500">{featuredPostDisplay.author.role}</p>
                         </div>
                       </div>
                       
                       <button 
                         onClick={() => {
                           if (onNavigate) {
-                            onNavigate('blog-detail', featuredPost.id);
+                            onNavigate('blog-detail', featuredPostDisplay.id);
                           }
                         }}
                         className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-semibold inline-flex items-center"

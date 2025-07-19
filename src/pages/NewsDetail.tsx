@@ -1,22 +1,21 @@
 import React, { useState, useEffect } from "react";
-import { ArrowLeft, Calendar, Clock, User, Eye, MessageCircle, Share2, Tag, ChevronRight } from "lucide-react";
+import { ArrowLeft, Calendar, Clock, User, Eye, MessageCircle, Share2, Tag, ChevronRight, TrendingUp, TrendingDown } from "lucide-react";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 import { articleService } from "@/services/articles";
-// import { Article } from "@/types/article";
-import { BlogPost } from "@/types/blog";
+import { Article } from "@/types/article";
 
-interface BlogDetailProps {
+interface NewsDetailProps {
   articleId: string;
   onNavigate: (page: string, articleId?: string) => void;
 }
 
-const BlogDetail: React.FC<BlogDetailProps> = ({ articleId, onNavigate }) => {
-  const [article, setArticle] = useState<BlogPost | null>(null);
-  const [relatedArticles, setRelatedArticles] = useState<BlogPost[]>([]);
+const NewsDetail: React.FC<NewsDetailProps> = ({ articleId, onNavigate }) => {
+  const [article, setArticle] = useState<Article | null>(null);
+  const [relatedArticles, setRelatedArticles] = useState<Article[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -27,19 +26,22 @@ const BlogDetail: React.FC<BlogDetailProps> = ({ articleId, onNavigate }) => {
         setError(null);
         
         const [articleData, relatedData] = await Promise.all([
-          articleService.getBlogById(parseInt(articleId)),
+          articleService.getArticleById(parseInt(articleId)),
           articleService.getRecentArticles(4)
         ]);
         
         if (!articleData) {
-          throw new Error('Article not found');
+          throw new Error('News article not found');
         }
         
-        setArticle(articleData as unknown as BlogPost);
+        setArticle(articleData);
         // Filter out current article from related articles
-        setRelatedArticles(relatedData.filter(a => a.id !== articleData.id).slice(0, 3) as unknown as BlogPost[]);
+        setRelatedArticles(relatedData.filter(a => a.id !== articleData.id).slice(0, 3));
+        
+        // Track article view
+        await articleService.incrementViewCount(articleData.id);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load article');
+        setError(err instanceof Error ? err.message : 'Failed to load news article');
       } finally {
         setLoading(false);
       }
@@ -81,6 +83,23 @@ const BlogDetail: React.FC<BlogDetailProps> = ({ articleId, onNavigate }) => {
     return keywords.split(',').map(tag => tag.trim()).filter(tag => tag);
   };
 
+  // Get category from keywords (first keyword)
+  const getCategory = (keywords: string | null) => {
+    const tags = getTags(keywords);
+    return tags[0] || 'Berita';
+  };
+
+  // Determine trending info (random for now, can be enhanced later)
+  const getTrendingInfo = () => {
+    const trends = [
+      { direction: 'up' as const, change: '+2.3%' },
+      { direction: 'down' as const, change: '-1.5%' },
+      { direction: 'up' as const, change: '+0.8%' },
+      null // no trend
+    ];
+    return trends[Math.floor(Math.random() * trends.length)];
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50">
@@ -88,7 +107,7 @@ const BlogDetail: React.FC<BlogDetailProps> = ({ articleId, onNavigate }) => {
         <div className="container mx-auto px-4 py-16 text-center">
           <div className="flex items-center justify-center">
             <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mr-2"></div>
-            <span className="text-lg text-gray-600">Memuat artikel...</span>
+            <span className="text-lg text-gray-600">Memuat berita...</span>
           </div>
         </div>
         <Footer />
@@ -102,14 +121,14 @@ const BlogDetail: React.FC<BlogDetailProps> = ({ articleId, onNavigate }) => {
         <Header onNavigate={onNavigate} />
         <div className="container mx-auto px-4 py-16 text-center">
           <div className="max-w-md mx-auto">
-            <h1 className="text-2xl font-bold text-gray-900 mb-4">Artikel Tidak Ditemukan</h1>
-            <p className="text-gray-600 mb-8">{error || 'Artikel yang Anda cari tidak ditemukan.'}</p>
+            <h1 className="text-2xl font-bold text-gray-900 mb-4">Berita Tidak Ditemukan</h1>
+            <p className="text-gray-600 mb-8">{error || 'Berita yang Anda cari tidak ditemukan.'}</p>
             <button 
-              onClick={() => onNavigate('blog')}
+              onClick={() => onNavigate('news')}
               className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-semibold inline-flex items-center"
             >
               <ArrowLeft className="w-4 h-4 mr-2" />
-              Kembali ke Blog
+              Kembali ke News
             </button>
           </div>
         </div>
@@ -119,8 +138,10 @@ const BlogDetail: React.FC<BlogDetailProps> = ({ articleId, onNavigate }) => {
   }
 
   const readingTime = calculateReadingTime(article.content || '');
-  const publishDate = formatDate(article.published_at || article.created_at);
-  const tags = getTags(article.tags?.toString() || null);
+  const publishDate = formatDate(article.date_post || article.created_at);
+  const tags = getTags(article.keywords);
+  const category = getCategory(article.keywords);
+  const trending = getTrendingInfo();
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -138,10 +159,10 @@ const BlogDetail: React.FC<BlogDetailProps> = ({ articleId, onNavigate }) => {
             </button>
             <ChevronRight className="w-4 h-4" />
             <button 
-              onClick={() => onNavigate('blog')}
+              onClick={() => onNavigate('news')}
               className="hover:text-blue-600"
             >
-              Blog
+              News
             </button>
             <ChevronRight className="w-4 h-4" />
             <span className="text-gray-900 font-medium truncate">{article.title}</span>
@@ -153,28 +174,50 @@ const BlogDetail: React.FC<BlogDetailProps> = ({ articleId, onNavigate }) => {
         <div className="max-w-4xl mx-auto">
           {/* Back Button */}
           <button 
-            onClick={() => onNavigate('blog')}
+            onClick={() => onNavigate('news')}
             className="flex items-center text-blue-600 hover:text-blue-700 mb-8 font-medium"
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
-            Kembali ke Blog
+            Kembali ke News
           </button>
 
           {/* Article Header */}
           <header className="bg-white rounded-2xl shadow-lg overflow-hidden mb-8">
-            {article.featured_image_url && (
+            {article.image_url && (
               <div className="relative h-64 md:h-80">
                 <img
-                  src={article.featured_image_url}
-                  alt={article.title || 'Article image'}
+                  src={article.image_url}
+                  alt={article.title || 'News image'}
                   className="w-full h-full object-cover"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
+                
+                {/* Breaking News Badge */}
+                <div className="absolute top-4 left-4 flex gap-2">
+                  <span className="bg-red-600 text-white px-3 py-1 rounded-full text-sm font-bold">
+                    BREAKING
+                  </span>
+                  {trending && (
+                    <span className={`px-3 py-1 rounded-full text-sm font-bold flex items-center ${
+                      trending.direction === 'up' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
+                    }`}>
+                      {trending.direction === 'up' ? (
+                        <TrendingUp className="w-3 h-3 mr-1" />
+                      ) : (
+                        <TrendingDown className="w-3 h-3 mr-1" />
+                      )}
+                      {trending.change}
+                    </span>
+                  )}
+                </div>
               </div>
             )}
             
             <div className="p-8">
               <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600 mb-4">
+                <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-md font-medium">
+                  {category}
+                </span>
                 <div className="flex items-center">
                   <Calendar className="w-4 h-4 mr-1" />
                   {publishDate}
@@ -185,7 +228,7 @@ const BlogDetail: React.FC<BlogDetailProps> = ({ articleId, onNavigate }) => {
                 </div>
                 <div className="flex items-center">
                   <User className="w-4 h-4 mr-1" />
-                  {'Sahamnesia'}
+                  {article.author || 'Tim Redaksi Sahamnesia'}
                 </div>
                 <div className="flex items-center">
                   <Eye className="w-4 h-4 mr-1" />
@@ -197,9 +240,9 @@ const BlogDetail: React.FC<BlogDetailProps> = ({ articleId, onNavigate }) => {
                 {article.title}
               </h1>
               
-              {article.excerpt && (
+              {article.description && (
                 <p className="text-lg text-gray-600 mb-6 leading-relaxed">
-                  {article.excerpt}
+                  {article.description}
                 </p>
               )}
               
@@ -313,7 +356,7 @@ const BlogDetail: React.FC<BlogDetailProps> = ({ articleId, onNavigate }) => {
                       </div>
                     ),
                     blockquote: ({ children, ...props }) => (
-                      <blockquote className="border-l-4 border-blue-500 pl-4 my-6 italic text-gray-700" {...props}>
+                      <blockquote className="border-l-4 border-blue-500 pl-4 my-6 italic text-gray-700 bg-blue-50 py-2" {...props}>
                         {children}
                       </blockquote>
                     ),
@@ -377,7 +420,7 @@ const BlogDetail: React.FC<BlogDetailProps> = ({ articleId, onNavigate }) => {
                   {prepareMarkdownContent(article.content)}
                 </ReactMarkdown>
               ) : (
-                <p className="text-gray-600 italic">Konten artikel tidak tersedia.</p>
+                <p className="text-gray-600 italic">Konten berita tidak tersedia.</p>
               )}
             </div>
           </article>
@@ -385,18 +428,18 @@ const BlogDetail: React.FC<BlogDetailProps> = ({ articleId, onNavigate }) => {
           {/* Related Articles */}
           {relatedArticles.length > 0 && (
             <section className="bg-white rounded-2xl shadow-lg p-8">
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">Artikel Terkait</h2>
+              <h2 className="text-2xl font-bold text-gray-900 mb-6">Berita Terkait</h2>
               <div className="grid md:grid-cols-3 gap-6">
                 {relatedArticles.map((relatedArticle) => (
                   <article
                     key={relatedArticle.id}
                     className="group cursor-pointer"
-                    onClick={() => onNavigate('blog-detail', relatedArticle.id.toString())}
+                    onClick={() => onNavigate('news-detail', relatedArticle.id.toString())}
                   >
                     <div className="relative overflow-hidden rounded-lg mb-4">
                       <img
-                        src={relatedArticle.featured_image_url || 'https://images.pexels.com/photos/95916/pexels-photo-95916.jpeg'}
-                        alt={relatedArticle.title || 'Related article'}
+                        src={relatedArticle.image_url || 'https://images.pexels.com/photos/95916/pexels-photo-95916.jpeg'}
+                        alt={relatedArticle.title || 'Related news'}
                         className="w-full h-32 object-cover group-hover:scale-105 transition-transform duration-300"
                       />
                     </div>
@@ -404,11 +447,11 @@ const BlogDetail: React.FC<BlogDetailProps> = ({ articleId, onNavigate }) => {
                       {relatedArticle.title}
                     </h3>
                     <p className="text-sm text-gray-600 line-clamp-2 mb-2">
-                      {relatedArticle.excerpt}
+                      {relatedArticle.description}
                     </p>
                     <div className="flex items-center text-xs text-gray-500">
                       <Calendar className="w-3 h-3 mr-1" />
-                      {formatDate(relatedArticle.published_at || relatedArticle.created_at)}
+                      {formatDate(relatedArticle.date_post || relatedArticle.created_at)}
                     </div>
                   </article>
                 ))}
@@ -423,4 +466,4 @@ const BlogDetail: React.FC<BlogDetailProps> = ({ articleId, onNavigate }) => {
   );
 };
 
-export default BlogDetail;
+export default NewsDetail;

@@ -1,21 +1,23 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { 
   ArrowUpRight, 
-  BarChart3, 
-  ChevronDown, 
   ChevronRight, 
   Clock, 
   TrendingDown, 
   TrendingUp, 
-  Globe,
   Bell,
   Filter,
   Search,
   Calendar,
-  RefreshCw
+  RefreshCw,
+  Loader2,
+  AlertCircle
 } from "lucide-react";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
+import { articleService } from "@/services/articles";
+import { Article } from "@/types/article";
+import { newsAnalyticsService, MarketSentiment, TrendingArticle } from "@/services/newsAnalytics";
 
 interface NewsArticle {
   id: string;
@@ -32,6 +34,40 @@ interface NewsArticle {
   source: string;
 }
 
+// Helper function to convert Article to NewsArticle
+const convertArticleToNews = (article: Article): NewsArticle => {
+  const tags = article.keywords ? article.keywords.split(',').map(k => k.trim()) : [];
+  
+  return {
+    id: article.id.toString(),
+    title: article.title || 'Untitled News',
+    excerpt: article.description || 'No description available',
+    category: tags[0] || 'Market Update',
+    publishedAt: article.date_post ? new Date(article.date_post).toLocaleDateString('id-ID', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric'
+    }) + ' • ' + new Date(article.date_post).toLocaleTimeString('id-ID', {
+      hour: '2-digit',
+      minute: '2-digit'
+    }) : new Date(article.created_at).toLocaleDateString('id-ID', {
+      day: 'numeric', 
+      month: 'short',
+      year: 'numeric'
+    }) + ' • ' + new Date(article.created_at).toLocaleTimeString('id-ID', {
+      hour: '2-digit',
+      minute: '2-digit'
+    }),
+    author: article.author || 'Tim Redaksi Sahamnesia',
+    imageUrl: article.image_url || 'https://images.pexels.com/photos/7567443/pexels-photo-7567443.jpeg',
+    isBreaking: Math.random() > 0.7, // Random breaking news flag
+    trending: Math.random() > 0.5 ? (Math.random() > 0.5 ? 'up' : 'down') : undefined,
+    change: Math.random() > 0.5 ? `${Math.random() > 0.5 ? '+' : '-'}${(Math.random() * 5 + 0.1).toFixed(1)}%` : undefined,
+    readTime: Math.ceil((article.content?.length || 0) / 200) + ' menit',
+    source: article.source || 'Sahamnesia'
+  };
+};
+
 interface MarketData {
   name: string;
   symbol: string;
@@ -42,22 +78,119 @@ interface MarketData {
 }
 
 interface MarketNewsProps {
-  onNavigate?: (page: string) => void;
+  onNavigate?: (page: string, newsId?: string) => void;
 }
 
 const News: React.FC<MarketNewsProps> = ({ onNavigate }) => {
   const [selectedCategory, setSelectedCategory] = useState("Semua");
   const [searchQuery, setSearchQuery] = useState("");
+  const [articles, setArticles] = useState<Article[]>([]);
+  const [categories, setCategories] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [searchResults, setSearchResults] = useState<Article[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [marketSentiment, setMarketSentiment] = useState<MarketSentiment | null>(null);
+  const [trendingArticles, setTrendingArticles] = useState<TrendingArticle[]>([]);
+  const [sentimentLoading, setSentimentLoading] = useState(false);
+  const [trendingLoading, setTrendingLoading] = useState(false);
 
-  const categories = [
-    { name: "Semua", count: 156 },
-    { name: "Breaking News", count: 12 },
-    { name: "Market Update", count: 28 },
-    { name: "Saham", count: 45 },
-    { name: "Ekonomi", count: 32 },
-    { name: "Regulasi", count: 16 },
-    { name: "Komoditas", count: 23 }
-  ];
+  // Load articles and categories on component mount
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        const [articlesResponse, categoriesData] = await Promise.all([
+          articleService.getArticles({ limit: 50 }),
+          articleService.getCategories()
+        ]);
+        
+        setArticles(articlesResponse.data);
+        setCategories(['Semua', ...categoriesData.slice(0, 10)]);
+        
+        // Debug logging
+        console.log('News page loaded:', {
+          articlesCount: articlesResponse.data.length,
+          categoriesCount: categoriesData.length,
+          categories: ['Semua', ...categoriesData.slice(0, 10)]
+        });
+        
+        // Load analytics data
+        loadAnalyticsData(articlesResponse.data);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load news');
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    loadData();
+  }, []);
+  
+  // Load analytics data
+  const loadAnalyticsData = async (articlesData: Article[]) => {
+    // Load market sentiment
+    try {
+      setSentimentLoading(true);
+      const sentiment = await newsAnalyticsService.analyzeMarketSentiment(articlesData);
+      setMarketSentiment(sentiment);
+    } catch (error) {
+      console.error('Failed to load market sentiment:', error);
+    } finally {
+      setSentimentLoading(false);
+    }
+    
+    // Load trending articles
+    try {
+      setTrendingLoading(true);
+      const trending = await newsAnalyticsService.generateTrendingArticles(articlesData);
+      setTrendingArticles(trending);
+    } catch (error) {
+      console.error('Failed to load trending articles:', error);
+    } finally {
+      setTrendingLoading(false);
+    }
+  };
+  
+  // Handle search
+  useEffect(() => {
+    const performSearch = async () => {
+      if (!searchQuery.trim()) {
+        setSearchResults([]);
+        setIsSearching(false);
+        return;
+      }
+      
+      try {
+        setIsSearching(true);
+        const results = await articleService.searchArticles(searchQuery, 20);
+        setSearchResults(results);
+      } catch (err) {
+        console.error('Search error:', err);
+      } finally {
+        setIsSearching(false);
+      }
+    };
+    
+    const debounceTimer = setTimeout(performSearch, 300);
+    return () => clearTimeout(debounceTimer);
+  }, [searchQuery]);
+  
+  // Calculate categories with counts only when articles are loaded
+  const categoriesWithCount = categories.map(cat => {
+    if (cat === 'Semua') {
+      return { name: cat, count: articles.length };
+    }
+    
+    const count = articles.filter(article => {
+      if (!article.keywords) return false;
+      return article.keywords.toLowerCase().includes(cat.toLowerCase());
+    }).length;
+    
+    return { name: cat, count };
+  });
 
   const marketData: MarketData[] = [
     {
@@ -102,124 +235,70 @@ const News: React.FC<MarketNewsProps> = ({ onNavigate }) => {
     }
   ];
 
-  const breakingNews: NewsArticle[] = [
-    {
-      id: "breaking-1",
-      title: "Bank Indonesia Pertahankan BI Rate di 5.75%, Rupiah Menguat ke Rp 15.675/USD",
-      excerpt: "Keputusan ini sejalan dengan ekspektasi pasar di tengah inflasi yang terkendali dan stabilitas makroekonomi yang terjaga.",
-      category: "Ekonomi",
-      publishedAt: "2 jam lalu",
-      author: "Tim Redaksi Sahamnesia",
-      imageUrl: "https://images.pexels.com/photos/7567443/pexels-photo-7567443.jpeg",
-      isBreaking: true,
-      readTime: "5 menit",
-      source: "Bank Indonesia"
-    },
-    {
-      id: "breaking-2",
-      title: "Pemerintah Luncurkan Insentif Pajak Baru untuk Startup Teknologi",
-      excerpt: "Kebijakan ini bertujuan meningkatkan investasi di sektor teknologi dan mendorong ekosistem startup Indonesia.",
-      category: "Regulasi",
-      publishedAt: "3 jam lalu",
-      author: "Maya Kusuma",
-      imageUrl: "https://images.pexels.com/photos/7567526/pexels-photo-7567526.jpeg",
-      isBreaking: true,
-      readTime: "7 menit",
-      source: "Kemenkeu"
-    },
-    {
-      id: "breaking-3",
-      title: "TLKM Raih Kontrak 5G Senilai Rp 12 Triliun dari Pemerintah",
-      excerpt: "Kontrak ini akan mempercepat implementasi jaringan 5G di Indonesia dan meningkatkan proyeksi revenue TLKM.",
-      category: "Saham",
-      publishedAt: "4 jam lalu",
-      author: "Budi Santoso",
-      imageUrl: "https://images.pexels.com/photos/95916/pexels-photo-95916.jpeg",
-      isBreaking: true,
-      trending: "up",
-      change: "+3.2%",
-      readTime: "6 menit",
-      source: "Telkom Indonesia"
-    }
-  ];
+  // Convert articles to news articles
+  const newsArticles = articles.map(convertArticleToNews);
+  
+  // Get breaking news (first 3 articles with breaking flag)
+  const breakingNews = newsArticles.filter(article => article.isBreaking).slice(0, 3);
 
-  const latestNews: NewsArticle[] = [
-    {
-      id: "news-1",
-      title: "Pertamina Catat Laba Bersih Rp 45 Triliun di Q3 2024, Naik 18% YoY",
-      excerpt: "Kinerja positif didorong oleh naiknya harga minyak dunia dan efisiensi operasional yang membaik.",
-      category: "Saham",
-      publishedAt: "1 jam lalu",
-      author: "Arief Wijaya",
-      imageUrl: "https://images.pexels.com/photos/534216/pexels-photo-534216.jpeg",
-      trending: "up",
-      change: "+2.3%",
-      readTime: "8 menit",
-      source: "Pertamina"
-    },
-    {
-      id: "news-2",
-      title: "PMI Manufaktur Indonesia Naik ke 52.8 di November 2024",
-      excerpt: "Indeks ini menunjukkan ekspansi sektor manufaktur untuk bulan ketujuh berturut-turut.",
-      category: "Ekonomi",
-      publishedAt: "2 jam lalu",
-      author: "Siti Rahma",
-      readTime: "5 menit",
-      source: "BPS"
-    },
-    {
-      id: "news-3",
-      title: "BBRI Luncurkan Platform Digital Banking Terbaru dengan Fitur AI",
-      excerpt: "Bank Rakyat Indonesia mengintegrasikan kecerdasan buatan untuk meningkatkan pengalaman nasabah.",
-      category: "Saham",
-      publishedAt: "3 jam lalu",
-      author: "Joko Prasetyo",
-      imageUrl: "https://images.pexels.com/photos/7567531/pexels-photo-7567531.jpeg",
-      trending: "up",
-      change: "+1.5%",
-      readTime: "6 menit",
-      source: "BRI"
-    },
-    {
-      id: "news-4",
-      title: "Harga Sawit Turun 4% Akibat Proyeksi Produksi Malaysia Meningkat",
-      excerpt: "Analis memperkirakan produksi sawit Malaysia akan naik 8% di semester kedua 2024.",
-      category: "Komoditas",
-      publishedAt: "4 jam lalu",
-      author: "Linda Sari",
-      trending: "down",
-      change: "-4.1%",
-      readTime: "7 menit",
-      source: "GAPKI"
-    },
-    {
-      id: "news-5",
-      title: "OJK Keluarkan Regulasi Baru untuk Trading Kripto di Indonesia",
-      excerpt: "Aturan baru ini bertujuan melindungi investor retail dan meningkatkan transparansi pasar kripto.",
-      category: "Regulasi",
-      publishedAt: "5 jam lalu",
-      author: "Ahmad Rahman",
-      readTime: "9 menit",
-      source: "OJK"
-    },
-    {
-      id: "news-6",
-      title: "BMRI Umumkan Dividen Interim Rp 150 per Saham",
-      excerpt: "Bank Mandiri membagikan dividen interim sebagai apresiasi kepada pemegang saham.",
-      category: "Saham",
-      publishedAt: "6 jam lalu",
-      author: "Dewi Lestari",
-      imageUrl: "https://images.pexels.com/photos/7567440/pexels-photo-7567440.jpeg",
-      trending: "up",
-      change: "+1.2%",
-      readTime: "4 menit",
-      source: "Bank Mandiri"
-    }
-  ];
+  // Get latest news (all articles)
+  const latestNews = newsArticles;
 
-  const filteredNews = selectedCategory === "Semua" 
-    ? latestNews 
-    : latestNews.filter(article => article.category === selectedCategory);
+  // Get filtered news based on search and category
+  const getFilteredNews = () => {
+    if (searchQuery.trim()) {
+      return searchResults.map(convertArticleToNews);
+    }
+    
+    if (selectedCategory === "Semua") {
+      return latestNews;
+    }
+    
+    return latestNews.filter(article => 
+      article.category === selectedCategory || 
+      article.category.toLowerCase().includes(selectedCategory.toLowerCase())
+    );
+  };
+  
+  const filteredNews = getFilteredNews();
+  
+  // Loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Header onNavigate={onNavigate} />
+        <div className="container mx-auto px-4 py-16 text-center mt-16">
+          <div className="flex items-center justify-center">
+            <Loader2 className="w-8 h-8 animate-spin text-blue-600 mr-2" />
+            <span className="text-lg text-gray-600">Memuat berita...</span>
+          </div>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
+  
+  // Error state
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Header onNavigate={onNavigate} />
+        <div className="container mx-auto px-4 py-16 text-center mt-16">
+          <div className="flex items-center justify-center text-red-600">
+            <AlertCircle className="w-8 h-8 mr-2" />
+            <span className="text-lg">Error: {error}</span>
+          </div>
+          <button 
+            onClick={() => window.location.reload()}
+            className="mt-4 bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            Coba Lagi
+          </button>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -297,10 +376,15 @@ const News: React.FC<MarketNewsProps> = ({ onNavigate }) => {
               <input
                 type="search"
                 placeholder="Cari berita..."
-                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
+              {isSearching && (
+                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                  <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
+                </div>
+              )}
             </div>
             <div className="flex space-x-2">
               <button className="flex items-center px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
@@ -386,7 +470,15 @@ const News: React.FC<MarketNewsProps> = ({ onNavigate }) => {
                           <span>•</span>
                           <span>{article.readTime} baca</span>
                         </div>
-                        <button className="text-blue-600 hover:text-blue-700 font-medium flex items-center">
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (onNavigate) {
+                              onNavigate('news-detail', article.id);
+                            }
+                          }}
+                          className="text-blue-600 hover:text-blue-700 font-medium flex items-center"
+                        >
                           Baca
                           <ChevronRight className="ml-1 h-3 w-3" />
                         </button>
@@ -399,7 +491,7 @@ const News: React.FC<MarketNewsProps> = ({ onNavigate }) => {
 
             {/* Category Filter */}
             <div className="flex flex-wrap gap-2 mb-8">
-              {categories.map((category) => (
+              {categoriesWithCount.length > 0 ? categoriesWithCount.map((category) => (
                 <button
                   key={category.name}
                   onClick={() => setSelectedCategory(category.name)}
@@ -411,7 +503,9 @@ const News: React.FC<MarketNewsProps> = ({ onNavigate }) => {
                 >
                   {category.name} ({category.count})
                 </button>
-              ))}
+              )) : (
+                <div className="text-gray-500">Loading categories...</div>
+              )}
             </div>
 
             {/* Latest News */}
@@ -419,7 +513,14 @@ const News: React.FC<MarketNewsProps> = ({ onNavigate }) => {
               <h2 className="text-2xl font-bold text-gray-900 mb-6">Berita Terbaru</h2>
               
               <div className="space-y-6">
-                {filteredNews.map((article) => (
+                {filteredNews.length === 0 ? (
+                  <div className="text-center py-12">
+                    <p className="text-gray-500 text-lg">
+                      {searchQuery ? 'Tidak ada berita yang sesuai dengan pencarian.' : 'Tidak ada berita tersedia.'}
+                    </p>
+                  </div>
+                ) : (
+                  filteredNews.map((article) => (
                   <article key={article.id} className="bg-white rounded-xl shadow-md hover:shadow-lg transition-shadow p-6">
                     <div className="flex flex-col md:flex-row gap-6">
                       {article.imageUrl && (
@@ -470,7 +571,14 @@ const News: React.FC<MarketNewsProps> = ({ onNavigate }) => {
                             <span>•</span>
                             <span>Sumber: {article.source}</span>
                           </div>
-                          <button className="text-blue-600 hover:text-blue-700 font-medium flex items-center">
+                          <button 
+                            onClick={() => {
+                              if (onNavigate) {
+                                onNavigate('news-detail', article.id);
+                              }
+                            }}
+                            className="text-blue-600 hover:text-blue-700 font-medium flex items-center"
+                          >
                             Baca Selengkapnya
                             <ChevronRight className="ml-1 h-4 w-4" />
                           </button>
@@ -478,7 +586,8 @@ const News: React.FC<MarketNewsProps> = ({ onNavigate }) => {
                       </div>
                     </div>
                   </article>
-                ))}
+                  ))
+                )}
               </div>
 
               {/* Load More */}
@@ -530,20 +639,64 @@ const News: React.FC<MarketNewsProps> = ({ onNavigate }) => {
 
               {/* Market Sentiment */}
               <div className="bg-white rounded-xl p-6 shadow-md">
-                <h3 className="text-lg font-bold text-gray-900 mb-4">Sentimen Pasar</h3>
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Bullish</span>
-                    <span className="text-lg font-bold text-green-600">68%</span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div className="bg-green-500 h-2 rounded-full" style={{ width: '68%' }}></div>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Bearish</span>
-                    <span className="text-lg font-bold text-red-600">32%</span>
-                  </div>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-bold text-gray-900">Sentimen Pasar</h3>
+                  {sentimentLoading && (
+                    <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                  )}
                 </div>
+                
+                {marketSentiment ? (
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600">Bullish</span>
+                      <span className="text-lg font-bold text-green-600">{marketSentiment.bullish}%</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div 
+                        className="bg-green-500 h-2 rounded-full transition-all duration-1000" 
+                        style={{ width: `${marketSentiment.bullish}%` }}
+                      ></div>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600">Bearish</span>
+                      <span className="text-lg font-bold text-red-600">{marketSentiment.bearish}%</span>
+                    </div>
+                    {marketSentiment.neutral > 0 && (
+                      <>
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-gray-600">Neutral</span>
+                          <span className="text-lg font-bold text-gray-600">{marketSentiment.neutral}%</span>
+                        </div>
+                      </>
+                    )}
+                    <div className="mt-4 pt-4 border-t border-gray-100">
+                      <p className="text-xs text-gray-500 mb-2">
+                        Dianalisis menggunakan AI • {new Date(marketSentiment.lastUpdated).toLocaleTimeString('id-ID')}
+                      </p>
+                      <p className="text-sm text-gray-700 leading-relaxed">
+                        {marketSentiment.summary}
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600">Bullish</span>
+                      <span className="text-lg font-bold text-green-600">--%</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div className="bg-gray-300 h-2 rounded-full animate-pulse"></div>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600">Bearish</span>
+                      <span className="text-lg font-bold text-red-600">--%</span>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-4">
+                      Memuat analisis sentimen...
+                    </p>
+                  </div>
+                )}
               </div>
 
               {/* Newsletter */}
@@ -566,25 +719,69 @@ const News: React.FC<MarketNewsProps> = ({ onNavigate }) => {
 
               {/* Most Read */}
               <div className="bg-white rounded-xl p-6 shadow-md">
-                <h3 className="text-lg font-bold text-gray-900 mb-4">Paling Banyak Dibaca</h3>
-                <div className="space-y-4">
-                  {[
-                    "BBCA Target Price Rp 11.000 oleh Analis Asing",
-                    "Dampak Kenaikan Suku Bunga Fed terhadap IHSG",
-                    "10 Saham Pilihan Desember 2024",
-                    "Analisis Teknikal: IHSG Menuju 7.500?",
-                    "Strategi Investasi di Tengah Volatilitas Pasar"
-                  ].map((title, index) => (
-                    <div key={index} className="flex items-start space-x-3">
-                      <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-xs font-bold">
-                        {index + 1}
-                      </span>
-                      <span className="text-sm text-gray-700 line-clamp-2">
-                        {title}
-                      </span>
-                    </div>
-                  ))}
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-bold text-gray-900">Paling Banyak Dibaca</h3>
+                  {trendingLoading && (
+                    <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                  )}
                 </div>
+                
+                <div className="space-y-4">
+                  {trendingArticles.length > 0 ? (
+                    trendingArticles.map((article, index) => (
+                      <div 
+                        key={article.id} 
+                        className="flex items-start space-x-3 cursor-pointer hover:bg-gray-50 p-2 rounded-lg transition-colors"
+                        onClick={() => {
+                          if (onNavigate) {
+                            onNavigate('news-detail', article.id);
+                          }
+                        }}
+                      >
+                        <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-xs font-bold">
+                          {index + 1}
+                        </span>
+                        <div className="flex-1 min-w-0">
+                          <h4 className="text-sm font-medium text-gray-900 line-clamp-2 mb-1">
+                            {article.enhancedTitle}
+                          </h4>
+                          <p className="text-xs text-gray-500 line-clamp-1 mb-1">
+                            {article.summary}
+                          </p>
+                          <div className="flex items-center space-x-2 text-xs text-gray-400">
+                            <span>{article.views.toLocaleString()} views</span>
+                            <span>•</span>
+                            <span>{article.readTime}</span>
+                            <span>•</span>
+                            <span className="bg-gray-100 text-gray-600 px-1 rounded">
+                              {article.category}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    // Fallback loading state
+                    [1, 2, 3, 4, 5].map((index) => (
+                      <div key={index} className="flex items-start space-x-3">
+                        <span className="flex-shrink-0 w-6 h-6 bg-gray-200 rounded-full animate-pulse"></span>
+                        <div className="flex-1 space-y-2">
+                          <div className="h-4 bg-gray-200 rounded animate-pulse"></div>
+                          <div className="h-3 bg-gray-200 rounded animate-pulse w-3/4"></div>
+                          <div className="h-2 bg-gray-200 rounded animate-pulse w-1/2"></div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+                
+                {trendingArticles.length > 0 && (
+                  <div className="mt-4 pt-4 border-t border-gray-100">
+                    <p className="text-xs text-gray-500 text-center">
+                      Diurutkan berdasarkan algoritma AI • Diperbarui setiap 30 menit
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           </div>

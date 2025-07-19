@@ -15,6 +15,7 @@ import Chatbot from './components/Chatbot';
 import Blog from './pages/Blog';
 import BlogDetail from './pages/BlogDetail';
 import News from './pages/News';
+import NewsDetail from './pages/NewsDetail';
 import Contact from './pages/Contact';
 // import StockTickerDemo from "./components/StockWidgets";
 
@@ -41,6 +42,10 @@ function App() {
 
   if (currentPage === 'news') {
     return <News onNavigate={handleNavigate} />;
+  }
+  
+  if (currentPage === 'news-detail' && currentArticleId) {
+    return <NewsDetail articleId={currentArticleId} onNavigate={handleNavigate} />;
   }
 
   if (currentPage === 'contact') {
