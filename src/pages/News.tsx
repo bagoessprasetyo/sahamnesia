@@ -335,7 +335,7 @@ const News: React.FC<MarketNewsProps> = ({ onNavigate }) => {
           </div>
 
           {/* Market Data Overview */}
-          <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl p-6 mb-8">
+          {/* <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl p-6 mb-8">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-bold text-gray-900">Data Pasar Real-time</h2>
               <div className="flex items-center space-x-3">
@@ -367,7 +367,7 @@ const News: React.FC<MarketNewsProps> = ({ onNavigate }) => {
                 </div>
               ))}
             </div>
-          </div>
+          </div> */}
 
           {/* Search and Filters */}
           <div className="flex flex-col md:flex-row gap-4 items-center mb-8">
