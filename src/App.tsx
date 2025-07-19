@@ -56,7 +56,7 @@ function App() {
         <StockTickerDemo />
         <PerformanceSection />
         <ProblemSolution />
-        <Features />
+        {/* <Features /> */}
         <HowItWorks />
         {/* <StockWidgets /> */}
         <BlogSection onNavigate={handleNavigate} />
