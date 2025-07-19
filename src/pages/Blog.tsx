@@ -1,7 +1,9 @@
-import React, { useState } from "react";
-import { ArrowRight, Search, Clock, User, TrendingUp, Calendar, Tag, Eye, MessageCircle } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { ArrowRight, Search, Clock, TrendingUp, Calendar, Eye, MessageCircle, Loader2, AlertCircle } from "lucide-react";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
+import { articleService } from "@/services/articles";
+import { Article } from "@/types/article";
 
 interface BlogPost {
   id: string;
@@ -24,156 +26,184 @@ interface BlogPost {
   profit?: string;
 }
 
-const Blog: React.FC = () => {
+interface BlogProps {
+  onNavigate?: (page: string, articleId?: string) => void;
+}
+
+// Helper function to convert Article to BlogPost
+const convertArticleToBlogPost = (article: Article): BlogPost => {
+  const tags = article.keywords ? article.keywords.split(',').map(k => k.trim()) : [];
+  const defaultAuthor = {
+    name: article.author || 'Tim Sahamnesia',
+    avatar: 'https://images.pexels.com/photos/415829/pexels-photo-415829.jpeg?auto=compress&cs=tinysrgb&w=100',
+    role: 'Analyst'
+  };
+  
+  return {
+    id: article.id.toString(),
+    title: article.title || 'Untitled Article',
+    excerpt: article.description || 'No description available',
+    content: article.content || '',
+    category: tags[0] || 'Analisis Saham',
+    author: defaultAuthor,
+    publishedDate: article.date_post ? new Date(article.date_post).toLocaleDateString('id-ID', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    }) : new Date(article.created_at).toLocaleDateString('id-ID', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    }),
+    readTime: Math.ceil((article.content?.length || 0) / 200) + ' menit',
+    imageUrl: article.image_url || 'https://images.pexels.com/photos/7567443/pexels-photo-7567443.jpeg',
+    tags: tags.slice(0, 3),
+    isPremium: false,
+    views: Math.floor(Math.random() * 2000) + 100,
+    comments: Math.floor(Math.random() * 50) + 1
+  };
+};
+
+const Blog: React.FC<BlogProps> = ({ onNavigate }) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("Semua");
+  const [articles, setArticles] = useState<Article[]>([]);
+  const [featuredArticle, setFeaturedArticle] = useState<Article | null>(null);
+  const [categories, setCategories] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [searchResults, setSearchResults] = useState<Article[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
 
-  const categories = [
-    { name: "Semua", count: 45 },
-    { name: "Analisis Saham", count: 12 },
-    { name: "Strategi Trading", count: 8 },
-    { name: "Edukasi Dasar", count: 10 },
-    { name: "Success Story", count: 6 },
-    { name: "Market Update", count: 9 }
-  ];
+  // Load articles and categories on component mount
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        // Load articles and featured article
+        const [articlesResponse, featuredArticles, categoriesData] = await Promise.all([
+          articleService.getArticles({ limit: 20 }),
+          articleService.getFeaturedArticles(1),
+          articleService.getCategories()
+        ]);
+        
+        setArticles(articlesResponse.data);
+        setFeaturedArticle(featuredArticles[0] || null);
+        setCategories(['Semua', ...categoriesData.slice(0, 10)]);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load articles');
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    loadData();
+  }, []);
+  
+  // Handle search
+  useEffect(() => {
+    const performSearch = async () => {
+      if (!searchQuery.trim()) {
+        setSearchResults([]);
+        setIsSearching(false);
+        return;
+      }
+      
+      try {
+        setIsSearching(true);
+        const results = await articleService.searchArticles(searchQuery, 10);
+        setSearchResults(results);
+      } catch (err) {
+        console.error('Search error:', err);
+      } finally {
+        setIsSearching(false);
+      }
+    };
+    
+    const debounceTimer = setTimeout(performSearch, 300);
+    return () => clearTimeout(debounceTimer);
+  }, [searchQuery]);
+  
+  const categoriesWithCount = categories.map(cat => ({
+    name: cat,
+    count: cat === 'Semua' ? articles.length : articles.filter(article => 
+      article.keywords?.toLowerCase().includes(cat.toLowerCase())
+    ).length
+  }));
 
-  const featuredPost: BlogPost = {
-    id: "featured-1",
-    title: "Mengapa BBCA Naik 27% dalam 3 Bulan Terakhir?",
-    excerpt: "Analisis mendalam performa Bank Central Asia Q4 2024 dan proyeksi untuk 2025. Faktor-faktor yang mendorong kenaikan harga saham dan outlook jangka panjang sektor perbankan.",
-    content: "",
-    category: "Analisis Saham",
-    author: {
-      name: "Ellen May",
-      avatar: "https://images.pexels.com/photos/415829/pexels-photo-415829.jpeg?auto=compress&cs=tinysrgb&w=100",
-      role: "Senior Analyst"
-    },
-    publishedDate: "20 November 2024",
-    readTime: "12 menit",
-    imageUrl: "https://images.pexels.com/photos/7567443/pexels-photo-7567443.jpeg",
-    tags: ["BBCA", "Banking", "Fundamental Analysis"],
-    isPremium: true,
-    views: 1250,
-    comments: 23,
-    profit: "+27%"
-  };
+  // Get featured post
+  const featuredPost: BlogPost | null = featuredArticle ? convertArticleToBlogPost(featuredArticle) : null;
 
-  const blogPosts: BlogPost[] = [
-    {
-      id: "post-1",
-      title: "5 Saham Pilihan Januari 2025: Sektor Consumer Goods Memimpin",
-      excerpt: "Tim analis Sahamnesia mengungkap 5 saham unggulan untuk portofolio Januari 2025. Fokus pada sektor consumer goods yang menunjukkan recovery kuat.",
-      content: "",
-      category: "Analisis Saham",
-      author: {
-        name: "Budi Santoso",
-        avatar: "https://images.pexels.com/photos/2379005/pexels-photo-2379005.jpeg?auto=compress&cs=tinysrgb&w=100",
-        role: "Portfolio Manager"
-      },
-      publishedDate: "18 November 2024",
-      readTime: "8 menit",
-      imageUrl: "https://images.pexels.com/photos/534216/pexels-photo-534216.jpeg",
-      tags: ["Stock Picks", "Consumer Goods", "2025 Outlook"],
-      isPremium: true,
-      views: 892,
-      comments: 15,
-      profit: "+15%"
-    },
-    {
-      id: "post-2",
-      title: "Technical Analysis: Support & Resistance untuk Trader Pemula",
-      excerpt: "Panduan lengkap memahami konsep support dan resistance dalam trading. Termasuk cara mengidentifikasi level dan strategi entry/exit.",
-      content: "",
-      category: "Edukasi Dasar",
-      author: {
-        name: "Siti Rahma",
-        avatar: "https://images.pexels.com/photos/415829/pexels-photo-415829.jpeg?auto=compress&cs=tinysrgb&w=100",
-        role: "Trading Coach"
-      },
-      publishedDate: "16 November 2024",
-      readTime: "15 menit",
-      imageUrl: "https://images.pexels.com/photos/95916/pexels-photo-95916.jpeg",
-      tags: ["Technical Analysis", "Support Resistance", "Tutorial"],
-      isPremium: false,
-      views: 1456,
-      comments: 32
-    },
-    {
-      id: "post-3",
-      title: "Success Story: Dari Rp 50 Juta Menjadi Rp 125 Juta dalam 8 Bulan",
-      excerpt: "Kisah inspiratif member premium Sahamnesia yang berhasil mengembangkan portfolio dengan strategi value investing dan diversifikasi sektor.",
-      content: "",
-      category: "Success Story",
-      author: {
-        name: "Arief Wijaya",
-        avatar: "https://images.pexels.com/photos/1516680/pexels-photo-1516680.jpeg?auto=compress&cs=tinysrgb&w=100",
-        role: "Community Manager"
-      },
-      publishedDate: "15 November 2024",
-      readTime: "10 menit",
-      imageUrl: "https://images.pexels.com/photos/7567531/pexels-photo-7567531.jpeg",
-      tags: ["Success Story", "Value Investing", "Portfolio"],
-      isPremium: false,
-      views: 2103,
-      comments: 45,
-      profit: "+150%"
-    },
-    {
-      id: "post-4",
-      title: "IHSG Outlook 2025: Proyeksi dan Skenario Pergerakan",
-      excerpt: "Analisis komprehensif prospek IHSG tahun 2025. Meliputi faktor makro ekonomi, sentiment global, dan rekomendasi alokasi aset.",
-      content: "",
-      category: "Market Update",
-      author: {
-        name: "Joko Prasetyo",
-        avatar: "https://images.pexels.com/photos/2379005/pexels-photo-2379005.jpeg?auto=compress&cs=tinysrgb&w=100",
-        role: "Market Strategist"
-      },
-      publishedDate: "13 November 2024",
-      readTime: "20 menit",
-      imageUrl: "https://images.pexels.com/photos/7567526/pexels-photo-7567526.jpeg",
-      tags: ["IHSG", "Market Outlook", "2025"],
-      isPremium: true,
-      views: 678,
-      comments: 12
-    },
-    {
-      id: "post-5",
-      title: "Dividend Investing: Strategi Passive Income dari Saham",
-      excerpt: "Cara membangun portofolio dividend stock yang memberikan passive income konsisten. Analisis 10 saham dividend terbaik IDX.",
-      content: "",
-      category: "Strategi Trading",
-      author: {
-        name: "Maya Kusuma",
-        avatar: "https://images.pexels.com/photos/415829/pexels-photo-415829.jpeg?auto=compress&cs=tinysrgb&w=100",
-        role: "Investment Advisor"
-      },
-      publishedDate: "11 November 2024",
-      readTime: "14 menit",
-      imageUrl: "https://images.pexels.com/photos/7567440/pexels-photo-7567440.jpeg",
-      tags: ["Dividend", "Passive Income", "Long Term"],
-      isPremium: true,
-      views: 934,
-      comments: 18
+  // Convert articles to blog posts
+  const blogPosts: BlogPost[] = articles.map(convertArticleToBlogPost);
+  
+  // Get filtered posts for display
+  const getFilteredPosts = () => {
+    if (searchQuery.trim()) {
+      return searchResults.map(convertArticleToBlogPost);
     }
-  ];
+    
+    if (selectedCategory === "Semua") {
+      return blogPosts;
+    }
+    
+    return blogPosts.filter(post => 
+      post.category === selectedCategory || 
+      post.tags.some(tag => tag.toLowerCase().includes(selectedCategory.toLowerCase()))
+    );
+  };
+  
+  const filteredPosts = getFilteredPosts();
 
-  const popularTags = [
-    "BBCA", "Technical Analysis", "Value Investing", "Dividend", "IHSG", 
-    "Banking", "Consumer Goods", "Mining", "Property", "Energy"
-  ];
+  const popularTags = categories.slice(1, 11); // Skip 'Semua' and take first 10
 
-  const filteredPosts = selectedCategory === "Semua" 
-    ? blogPosts 
-    : blogPosts.filter(post => post.category === selectedCategory);
-
+  // Loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Header />
+        <div className="container mx-auto px-4 py-16 text-center">
+          <div className="flex items-center justify-center">
+            <Loader2 className="w-8 h-8 animate-spin text-blue-600 mr-2" />
+            <span className="text-lg text-gray-600">Memuat artikel...</span>
+          </div>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
+  
+  // Error state
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Header />
+        <div className="container mx-auto px-4 py-16 text-center">
+          <div className="flex items-center justify-center text-red-600">
+            <AlertCircle className="w-8 h-8 mr-2" />
+            <span className="text-lg">Error: {error}</span>
+          </div>
+          <button 
+            onClick={() => window.location.reload()}
+            className="mt-4 bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            Coba Lagi
+          </button>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
+  
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header />
+      <Header onNavigate={onNavigate} />
       
       {/* Hero Section */}
       <section className="bg-white border-b border-gray-200">
-        <div className="container mx-auto px-4 py-16 text-center">
+        <div className="container mx-auto px-4 py-16 text-center mt-12">
           <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
             Blog Sahamnesia
           </h1>
@@ -185,10 +215,13 @@ const Blog: React.FC = () => {
           <div className="max-w-2xl mx-auto relative">
             <div className="relative">
               <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
+              {isSearching && (
+                <Loader2 className="absolute right-4 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400 animate-spin" />
+              )}
               <input
                 type="search"
                 placeholder="Cari artikel, saham, atau topik..."
-                className="w-full pl-12 pr-4 py-4 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full pl-12 pr-12 py-4 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
@@ -202,79 +235,88 @@ const Blog: React.FC = () => {
           {/* Main Content */}
           <div className="lg:col-span-3">
             {/* Featured Article */}
-            <section className="mb-16">
-              <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
-                <div className="relative">
-                  <img
-                    src={featuredPost.imageUrl}
-                    alt={featuredPost.title}
-                    className="w-full h-64 md:h-80 object-cover"
-                  />
-                  <div className="absolute top-4 left-4 flex gap-2">
-                    <span className="bg-blue-600 text-white px-3 py-1 rounded-full text-sm font-semibold">
-                      Featured
-                    </span>
-                    {featuredPost.isPremium && (
-                      <span className="bg-yellow-500 text-yellow-900 px-3 py-1 rounded-full text-sm font-semibold">
-                        Premium
+            {featuredPost && (
+              <section className="mb-16">
+                <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
+                  <div className="relative">
+                    <img
+                      src={featuredPost.imageUrl}
+                      alt={featuredPost.title}
+                      className="w-full h-64 md:h-80 object-cover"
+                    />
+                    <div className="absolute top-4 left-4 flex gap-2">
+                      <span className="bg-blue-600 text-white px-3 py-1 rounded-full text-sm font-semibold">
+                        Featured
                       </span>
-                    )}
-                    {featuredPost.profit && (
-                      <span className="bg-green-500 text-white px-3 py-1 rounded-full text-sm font-bold flex items-center">
-                        <TrendingUp className="w-3 h-3 mr-1" />
-                        {featuredPost.profit}
-                      </span>
-                    )}
-                  </div>
-                </div>
-                <div className="p-8">
-                  <div className="flex items-center space-x-4 text-sm text-gray-600 mb-4">
-                    <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-md font-medium">
-                      {featuredPost.category}
-                    </span>
-                    <div className="flex items-center">
-                      <Calendar className="w-4 h-4 mr-1" />
-                      {featuredPost.publishedDate}
-                    </div>
-                    <div className="flex items-center">
-                      <Clock className="w-4 h-4 mr-1" />
-                      {featuredPost.readTime}
+                      {featuredPost.isPremium && (
+                        <span className="bg-yellow-500 text-yellow-900 px-3 py-1 rounded-full text-sm font-semibold">
+                          Premium
+                        </span>
+                      )}
+                      {featuredPost.profit && (
+                        <span className="bg-green-500 text-white px-3 py-1 rounded-full text-sm font-bold flex items-center">
+                          <TrendingUp className="w-3 h-3 mr-1" />
+                          {featuredPost.profit}
+                        </span>
+                      )}
                     </div>
                   </div>
-                  
-                  <h2 className="text-3xl font-bold text-gray-900 mb-4">
-                    {featuredPost.title}
-                  </h2>
-                  
-                  <p className="text-gray-600 text-lg mb-6 leading-relaxed">
-                    {featuredPost.excerpt}
-                  </p>
-                  
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                      <img
-                        src={featuredPost.author.avatar}
-                        alt={featuredPost.author.name}
-                        className="w-10 h-10 rounded-full object-cover"
-                      />
-                      <div>
-                        <p className="font-semibold text-gray-900">{featuredPost.author.name}</p>
-                        <p className="text-sm text-gray-500">{featuredPost.author.role}</p>
+                  <div className="p-8">
+                    <div className="flex items-center space-x-4 text-sm text-gray-600 mb-4">
+                      <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-md font-medium">
+                        {featuredPost.category}
+                      </span>
+                      <div className="flex items-center">
+                        <Calendar className="w-4 h-4 mr-1" />
+                        {featuredPost.publishedDate}
+                      </div>
+                      <div className="flex items-center">
+                        <Clock className="w-4 h-4 mr-1" />
+                        {featuredPost.readTime}
                       </div>
                     </div>
                     
-                    <button className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-semibold inline-flex items-center">
-                      Baca Selengkapnya
-                      <ArrowRight className="ml-2 h-4 w-4" />
-                    </button>
+                    <h2 className="text-3xl font-bold text-gray-900 mb-4">
+                      {featuredPost.title}
+                    </h2>
+                    
+                    <p className="text-gray-600 text-lg mb-6 leading-relaxed">
+                      {featuredPost.excerpt}
+                    </p>
+                    
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        <img
+                          src={featuredPost.author.avatar}
+                          alt={featuredPost.author.name}
+                          className="w-10 h-10 rounded-full object-cover"
+                        />
+                        <div>
+                          <p className="font-semibold text-gray-900">{featuredPost.author.name}</p>
+                          <p className="text-sm text-gray-500">{featuredPost.author.role}</p>
+                        </div>
+                      </div>
+                      
+                      <button 
+                        onClick={() => {
+                          if (onNavigate) {
+                            onNavigate('blog-detail', featuredPost.id);
+                          }
+                        }}
+                        className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-semibold inline-flex items-center"
+                      >
+                        Baca Selengkapnya
+                        <ArrowRight className="ml-2 h-4 w-4" />
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            </section>
+              </section>
+            )}
 
             {/* Category Filter */}
             <div className="flex flex-wrap gap-2 mb-8">
-              {categories.map((category) => (
+              {categoriesWithCount.map((category) => (
                 <button
                   key={category.name}
                   onClick={() => setSelectedCategory(category.name)}
@@ -291,8 +333,23 @@ const Blog: React.FC = () => {
 
             {/* Articles Grid */}
             <div className="grid md:grid-cols-2 gap-8 mb-12">
-              {filteredPosts.map((post) => (
-                <article key={post.id} className="bg-white rounded-xl shadow-md hover:shadow-lg transition-shadow overflow-hidden">
+              {filteredPosts.length === 0 ? (
+                <div className="col-span-2 text-center py-12">
+                  <p className="text-gray-500 text-lg">
+                    {searchQuery ? 'Tidak ada artikel yang sesuai dengan pencarian.' : 'Tidak ada artikel tersedia.'}
+                  </p>
+                </div>
+              ) : (
+                filteredPosts.map((post) => (
+                <article 
+                  key={post.id} 
+                  className="bg-white rounded-xl shadow-md hover:shadow-lg transition-shadow overflow-hidden cursor-pointer"
+                  onClick={() => {
+                    if (onNavigate) {
+                      onNavigate('blog-detail', post.id);
+                    }
+                  }}
+                >
                   <div className="relative">
                     <img
                       src={post.imageUrl}
@@ -355,14 +412,23 @@ const Blog: React.FC = () => {
                         </div>
                       </div>
                       
-                      <button className="text-blue-600 hover:text-blue-700 font-semibold text-sm flex items-center">
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (onNavigate) {
+                            onNavigate('blog-detail', post.id);
+                          }
+                        }}
+                        className="text-blue-600 hover:text-blue-700 font-semibold text-sm flex items-center"
+                      >
                         Baca
                         <ArrowRight className="ml-1 h-3 w-3" />
                       </button>
                     </div>
                   </div>
                 </article>
-              ))}
+                ))
+              )}
             </div>
 
             {/* Load More */}

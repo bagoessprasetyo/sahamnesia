@@ -1,3 +1,95 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Custom styles for markdown content */
+.markdown-content {
+  @apply text-base leading-relaxed;
+}
+
+.markdown-content img {
+  @apply max-w-full h-auto;
+}
+
+.markdown-content table {
+  @apply border-collapse;
+}
+
+.markdown-content blockquote {
+  @apply bg-gray-50 rounded-r-lg;
+}
+
+/* Custom prose styles for better readability */
+.prose {
+  @apply max-w-none;
+}
+
+.prose img {
+  @apply rounded-lg shadow-lg my-6;
+}
+
+.prose a {
+  @apply text-blue-600 hover:text-blue-700 transition-colors;
+}
+
+.prose h1,
+.prose h2,
+.prose h3,
+.prose h4,
+.prose h5,
+.prose h6 {
+  @apply font-bold text-gray-900;
+}
+
+.prose strong {
+  @apply font-bold text-gray-900;
+}
+
+.prose code {
+  @apply bg-gray-100 text-red-600 px-1 py-0.5 rounded text-sm;
+}
+
+.prose pre {
+  @apply bg-gray-100 p-4 rounded-lg overflow-x-auto;
+}
+
+.prose pre code {
+  @apply bg-transparent text-gray-800 p-0;
+}
+
+.prose blockquote {
+  @apply border-l-4 border-blue-500 bg-blue-50 pl-4 py-2 rounded-r;
+}
+
+.prose ul,
+.prose ol {
+  @apply space-y-2;
+}
+
+.prose li {
+  @apply text-gray-700;
+}
+
+.prose table th {
+  @apply bg-gray-100 font-semibold;
+}
+
+.prose table td,
+.prose table th {
+  @apply border border-gray-300 px-4 py-2;
+}
+
+/* Line clamp utilities */
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.line-clamp-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}

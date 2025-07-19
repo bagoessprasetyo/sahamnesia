@@ -1,8 +1,14 @@
-import React from 'react';
-import { Clock, Lock, TrendingUp, Users } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Clock, Lock, TrendingUp, Users, Loader2 } from 'lucide-react';
+import { articleService } from '@/services/articles';
+import { Article } from '@/types/article';
 
-interface Article {
-  id: number;
+interface BlogSectionProps {
+  onNavigate?: (page: string, articleId?: string) => void;
+}
+
+interface DisplayArticle {
+  id: string;
   title: string;
   excerpt: string;
   category: string;
@@ -13,9 +19,35 @@ interface Article {
   profit?: string;
 }
 
-const articles: Article[] = [
+// Helper function to convert Article to DisplayArticle
+const convertArticleToDisplay = (article: Article): DisplayArticle => {
+  const tags = article.keywords ? article.keywords.split(',').map(k => k.trim()) : [];
+  
+  return {
+    id: article.id.toString(),
+    title: article.title || 'Untitled Article',
+    excerpt: article.description || 'No description available',
+    category: tags[0] || 'Analisis Saham',
+    readTime: Math.ceil((article.content?.length || 0) / 200) + ' min',
+    isPremium: false, // You can implement premium logic later
+    imageUrl: article.image_url || 'https://images.pexels.com/photos/7567443/pexels-photo-7567443.jpeg',
+    date: article.date_post ? new Date(article.date_post).toLocaleDateString('id-ID', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric'
+    }) : new Date(article.created_at).toLocaleDateString('id-ID', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric'
+    }),
+    profit: Math.random() > 0.6 ? `+${Math.floor(Math.random() * 30 + 10)}%` : undefined
+  };
+};
+
+// Fallback articles for when no data is available
+const fallbackArticles: DisplayArticle[] = [
   {
-    id: 1,
+    id: '1',
     title: "Strategi Trading Miss Ellen May: BBCA (+27%) dan TLKM (+18%)",
     excerpt: "Pelajari bagaimana analis senior kami mengidentifikasi entry point sempurna untuk saham-saham unggulan dan teknik profit taking yang efektif.",
     category: "Trading Strategy",
@@ -26,7 +58,7 @@ const articles: Article[] = [
     profit: "+27%"
   },
   {
-    id: 2,
+    id: '2',
     title: "5 Saham Pilihan Januari 2025: Banking Sector Outlook",
     excerpt: "Analisis mendalam sektor perbankan Indonesia dan proyeksi performa 5 saham banking pilihan untuk portfolio jangka panjang.",
     category: "Stock Analysis", 
@@ -37,7 +69,7 @@ const articles: Article[] = [
     profit: "+15%"
   },
   {
-    id: 3,
+    id: '3',
     title: "Technical Analysis 101: Support & Resistance untuk Pemula",
     excerpt: "Panduan lengkap memahami konsep support & resistance dengan contoh nyata di saham-saham IDX untuk meningkatkan win rate trading.",
     category: "Education",
@@ -47,7 +79,7 @@ const articles: Article[] = [
     date: "20 Nov 2024"
   },
   {
-    id: 4,
+    id: '4',
     title: "Member Success Story: Portfolio +85% dalam 6 Bulan",
     excerpt: "Kisah inspiratif member premium yang berhasil mengembangkan portfolio dari Rp 100 juta menjadi Rp 185 juta dengan konsistensi strategi.",
     category: "Success Story",
@@ -59,7 +91,50 @@ const articles: Article[] = [
   }
 ];
 
-const BlogSection: React.FC = () => {
+const BlogSection: React.FC<BlogSectionProps> = ({ onNavigate }) => {
+  const [articles, setArticles] = useState<DisplayArticle[]>([]);
+  const [loading, setLoading] = useState(true);
+  
+  useEffect(() => {
+    const loadArticles = async () => {
+      try {
+        setLoading(true);
+        
+        const articlesData = await articleService.getFeaturedArticles(4);
+        
+        if (articlesData.length > 0) {
+          const displayArticles = articlesData.map(convertArticleToDisplay);
+          setArticles(displayArticles);
+        } else {
+          // Use fallback articles if no data available
+          setArticles(fallbackArticles);
+        }
+      } catch (err) {
+        console.error('Error loading articles:', err);
+        // Use fallback articles on error
+        setArticles(fallbackArticles);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    loadArticles();
+  }, []);
+  
+  if (loading) {
+    return (
+      <section className="py-20 bg-gradient-to-b from-white to-gray-50">
+        <div className="container mx-auto px-4 md:px-6">
+          <div className="text-center">
+            <div className="flex items-center justify-center mb-4">
+              <Loader2 className="w-8 h-8 animate-spin text-blue-600 mr-2" />
+              <span className="text-lg text-gray-600">Memuat artikel...</span>
+            </div>
+          </div>
+        </div>
+      </section>
+    );
+  }
   return (
     <section className="py-20 bg-gradient-to-b from-white to-gray-50">
       <div className="container mx-auto px-4 md:px-6">
@@ -112,7 +187,14 @@ const BlogSection: React.FC = () => {
                 <p className="text-gray-600 mb-6 leading-relaxed">
                   {articles[0].excerpt}
                 </p>
-                <button className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-semibold inline-flex items-center w-fit">
+                <button 
+                  onClick={() => {
+                    if (onNavigate) {
+                      onNavigate('blog-detail', articles[0].id);
+                    }
+                  }}
+                  className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-semibold inline-flex items-center w-fit"
+                >
                   Baca Selengkapnya
                   <span className="ml-2">→</span>
                 </button>
@@ -124,7 +206,15 @@ const BlogSection: React.FC = () => {
         {/* Article Grid */}
         <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
           {articles.slice(1).map((article) => (
-            <article key={article.id} className="group bg-white rounded-xl shadow-md hover:shadow-lg transition-shadow overflow-hidden">
+            <article 
+              key={article.id} 
+              className="group bg-white rounded-xl shadow-md hover:shadow-lg transition-shadow overflow-hidden cursor-pointer"
+              onClick={() => {
+                if (onNavigate) {
+                  onNavigate('blog-detail', article.id);
+                }
+              }}
+            >
               <div className="relative overflow-hidden">
                 <img
                   src={article.imageUrl}
@@ -163,7 +253,17 @@ const BlogSection: React.FC = () => {
                 </p>
                 <div className="flex justify-between items-center pt-2 border-t border-gray-100">
                   <span className="text-sm text-gray-500">{article.date}</span>
-                  <span className="text-blue-600 font-semibold text-sm">Baca →</span>
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (onNavigate) {
+                        onNavigate('blog-detail', article.id);
+                      }
+                    }}
+                    className="text-blue-600 font-semibold text-sm hover:text-blue-700"
+                  >
+                    Baca →
+                  </button>
                 </div>
               </div>
             </article>
@@ -186,7 +286,14 @@ const BlogSection: React.FC = () => {
             <button className="bg-white text-blue-600 px-8 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-colors">
               Upgrade ke Premium
             </button>
-            <button className="border-2 border-white text-white px-8 py-3 rounded-lg font-semibold hover:bg-white/10 transition-colors">
+            <button 
+              onClick={() => {
+                if (onNavigate) {
+                  onNavigate('blog');
+                }
+              }}
+              className="border-2 border-white text-white px-8 py-3 rounded-lg font-semibold hover:bg-white/10 transition-colors"
+            >
               Lihat Semua Artikel
             </button>
           </div>

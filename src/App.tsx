@@ -13,6 +13,7 @@ import CallToAction from './components/CallToAction';
 import Footer from './components/Footer';
 import Chatbot from './components/Chatbot';
 import Blog from './pages/Blog';
+import BlogDetail from './pages/BlogDetail';
 import News from './pages/News';
 import Contact from './pages/Contact';
 // import StockTickerDemo from "./components/StockWidgets";
@@ -20,16 +21,22 @@ import Contact from './pages/Contact';
 function App() {
   // Simple routing state (you can replace this with React Router later)
   const [currentPage, setCurrentPage] = useState('home');
+  const [currentArticleId, setCurrentArticleId] = useState<string | null>(null);
 
-  const handleNavigate = (page: string) => {
+  const handleNavigate = (page: string, articleId?: string) => {
     setCurrentPage(page);
+    setCurrentArticleId(articleId || null);
     // Scroll to top when navigating
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   // Render current page
   if (currentPage === 'blog') {
-    return <Blog />;
+    return <Blog onNavigate={handleNavigate} />;
+  }
+  
+  if (currentPage === 'blog-detail' && currentArticleId) {
+    return <BlogDetail articleId={currentArticleId} onNavigate={handleNavigate} />;
   }
 
   if (currentPage === 'news') {
@@ -52,7 +59,7 @@ function App() {
         <Features />
         <HowItWorks />
         {/* <StockWidgets /> */}
-        <BlogSection />
+        <BlogSection onNavigate={handleNavigate} />
         <SocialProof />
         <CallToAction />
       </main>
