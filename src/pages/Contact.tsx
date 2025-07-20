@@ -79,9 +79,7 @@ const Contact: React.FC<ContactPageProps> = ({ onNavigate }) => {
       icon: <Mail className="h-6 w-6" />,
       title: "Email Kami",
       details: [
-        "info@sahamnesia.id",
-        "support@sahamnesia.id",
-        "partnership@sahamnesia.id"
+        "info@sahamnesia.com"
       ],
       action: "Kirim Email"
     },
@@ -89,8 +87,7 @@ const Contact: React.FC<ContactPageProps> = ({ onNavigate }) => {
       icon: <Phone className="h-6 w-6" />,
       title: "Telepon Kami",
       details: [
-        "+62 21 2345 6789",
-        "+62 812 3456 7890",
+        "+62 853 5230 5458",
         "Senin - Jumat: 09:00 - 18:00"
       ],
       action: "Hubungi Sekarang"
@@ -99,9 +96,9 @@ const Contact: React.FC<ContactPageProps> = ({ onNavigate }) => {
       icon: <MapPin className="h-6 w-6" />,
       title: "Kunjungi Kami",
       details: [
-        "Menara BCA Lt. 15",
-        "Jl. M.H. Thamrin No. 1",
-        "Jakarta Pusat 10310"
+        "Jalan Gotong Royong, RT 04 RW 01",
+        "Kelurahan Ragunan, Kecamatan Pasar Minggu",
+        "Jakarta Selatan 10310"
       ],
       action: "Lihat Peta"
     },
@@ -201,7 +198,7 @@ const Contact: React.FC<ContactPageProps> = ({ onNavigate }) => {
           <p className="text-xl text-blue-100 max-w-3xl mx-auto mb-8">
             Tim ahli kami siap membantu Anda memahami pasar saham Indonesia dan meningkatkan kemampuan investasi Anda
           </p>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-4xl mx-auto">
+          {/* <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-4xl mx-auto">
             <div className="bg-white/10 backdrop-blur-md rounded-lg p-4">
               <div className="text-2xl font-bold">15,000+</div>
               <div className="text-sm text-blue-100">Active Members</div>
@@ -218,7 +215,7 @@ const Contact: React.FC<ContactPageProps> = ({ onNavigate }) => {
               <div className="text-2xl font-bold"> 2H</div>
               <div className="text-sm text-blue-100">Average Response</div>
             </div>
-          </div>
+          </div> */}
         </div>
       </section>
 
@@ -429,7 +426,7 @@ const Contact: React.FC<ContactPageProps> = ({ onNavigate }) => {
         </div>
 
         {/* Support Channels */}
-        <section className="mt-20">
+        {/* <section className="mt-20">
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold text-gray-900 mb-4">
               Cara Lain Mendapatkan Bantuan
@@ -465,10 +462,10 @@ const Contact: React.FC<ContactPageProps> = ({ onNavigate }) => {
               </div>
             ))}
           </div>
-        </section>
+        </section> */}
 
         {/* FAQ Section */}
-        <section className="mt-20">
+        {/* <section className="mt-20">
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold text-gray-900 mb-4">
               Frequently Asked Questions
@@ -504,10 +501,10 @@ const Contact: React.FC<ContactPageProps> = ({ onNavigate }) => {
               </button>
             </div>
           </div>
-        </section>
+        </section> */}
 
         {/* Team Section */}
-        <section className="mt-20">
+        {/* <section className="mt-20">
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold text-gray-900 mb-4">
               Tim Ahli Kami
@@ -539,7 +536,7 @@ const Contact: React.FC<ContactPageProps> = ({ onNavigate }) => {
               </div>
             ))}
           </div>
-        </section>
+        </section> */}
       </div>
 
       <Footer />

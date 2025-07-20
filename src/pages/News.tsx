@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { 
   ArrowUpRight, 
   ChevronRight, 
@@ -16,6 +16,7 @@ import Footer from "../components/Footer";
 import { articleService } from "@/services/articles";
 import { Article } from "@/types/article";
 import { newsAnalyticsService, MarketSentiment, TrendingArticle } from "@/services/newsAnalytics";
+import { newsletterService, NewsletterResponse } from "@/services/newsletter";
 
 interface NewsArticle {
   id: string;
@@ -30,49 +31,6 @@ interface NewsArticle {
   change?: string;
   readTime: string;
   source: string;
-}
-
-// Helper function to convert Article to NewsArticle
-const convertArticleToNews = (article: Article): NewsArticle => {
-  const tags = article.keywords ? article.keywords.split(',').map(k => k.trim()) : [];
-  
-  return {
-    id: article.id.toString(),
-    title: article.title || 'Untitled News',
-    excerpt: article.description || 'No description available',
-    category: tags[0] || 'Market Update',
-    publishedAt: article.date_post ? new Date(article.date_post).toLocaleDateString('id-ID', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric'
-    }) + ' • ' + new Date(article.date_post).toLocaleTimeString('id-ID', {
-      hour: '2-digit',
-      minute: '2-digit'
-    }) : new Date(article.created_at).toLocaleDateString('id-ID', {
-      day: 'numeric', 
-      month: 'short',
-      year: 'numeric'
-    }) + ' • ' + new Date(article.created_at).toLocaleTimeString('id-ID', {
-      hour: '2-digit',
-      minute: '2-digit'
-    }),
-    author: article.author || 'Tim Redaksi Sahamnesia',
-    imageUrl: article.image_url || 'https://images.pexels.com/photos/7567443/pexels-photo-7567443.jpeg',
-    isBreaking: Math.random() > 0.7, // Random breaking news flag
-    trending: Math.random() > 0.5 ? (Math.random() > 0.5 ? 'up' : 'down') : undefined,
-    change: Math.random() > 0.5 ? `${Math.random() > 0.5 ? '+' : '-'}${(Math.random() * 5 + 0.1).toFixed(1)}%` : undefined,
-    readTime: Math.ceil((article.content?.length || 0) / 200) + ' menit',
-    source: article.source || 'Sahamnesia'
-  };
-};
-
-interface MarketData {
-  name: string;
-  symbol: string;
-  price: string;
-  change: string;
-  changePercent: string;
-  trending: "up" | "down";
 }
 
 interface MarketNewsProps {
@@ -92,6 +50,82 @@ const News: React.FC<MarketNewsProps> = ({ onNavigate }) => {
   const [trendingArticles, setTrendingArticles] = useState<TrendingArticle[]>([]);
   const [sentimentLoading, setSentimentLoading] = useState(false);
   const [trendingLoading, setTrendingLoading] = useState(false);
+  
+  // Newsletter subscription state
+  const [newsletterEmail, setNewsletterEmail] = useState('');
+  const [newsletterLoading, setNewsletterLoading] = useState(false);
+  const [newsletterMessage, setNewsletterMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  
+  // Filter and date state
+  const [showFilters, setShowFilters] = useState(false);
+  const [showDateFilter, setShowDateFilter] = useState(false);
+  const [dateFilter, setDateFilter] = useState<'today' | 'week' | 'month' | 'all'>('all');
+  const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'trending'>('newest');
+
+  // Category mapping for better consistency
+  const getCategoryFromKeywords = useCallback((keywords: string | null): string => {
+    if (!keywords) return 'Market Update';
+    
+    const keywordList = keywords.toLowerCase().split(',').map(k => k.trim());
+    
+    // Priority mapping to ensure consistent categories
+    const categoryMap: { [key: string]: string } = {
+      'saham': 'Analisis Saham',
+      'ihsg': 'Market Update', 
+      'ekonomi': 'Ekonomi',
+      'regulasi': 'Regulasi',
+      'ipo': 'IPO',
+      'dividen': 'Dividen',
+      'merger': 'Korporasi',
+      'akuisisi': 'Korporasi',
+      'trading': 'Trading Strategy',
+      'investasi': 'Edukasi',
+      'fundamental': 'Analisis Saham',
+      'teknikal': 'Trading Strategy'
+    };
+    
+    // Find first matching category
+    for (const keyword of keywordList) {
+      if (categoryMap[keyword]) {
+        return categoryMap[keyword];
+      }
+    }
+    
+    // If no match found, use first keyword (capitalized) or default
+    return keywordList[0] ? keywordList[0].charAt(0).toUpperCase() + keywordList[0].slice(1) : 'Market Update';
+  }, []);
+
+  // Helper function to convert Article to NewsArticle
+  const convertArticleToNews = useCallback((article: Article): NewsArticle => {
+    return {
+      id: article.id.toString(),
+      title: article.title || 'Untitled News',
+      excerpt: article.description || 'No description available',
+      category: getCategoryFromKeywords(article.keywords),
+      publishedAt: article.date_post ? new Date(article.date_post).toLocaleDateString('id-ID', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric'
+      }) + ' • ' + new Date(article.date_post).toLocaleTimeString('id-ID', {
+        hour: '2-digit',
+        minute: '2-digit'
+      }) : new Date(article.created_at).toLocaleDateString('id-ID', {
+        day: 'numeric', 
+        month: 'short',
+        year: 'numeric'
+      }) + ' • ' + new Date(article.created_at).toLocaleTimeString('id-ID', {
+        hour: '2-digit',
+        minute: '2-digit'
+      }),
+      author: article.author || 'Tim Redaksi Sahamnesia',
+      imageUrl: article.image_url || 'https://images.pexels.com/photos/7567443/pexels-photo-7567443.jpeg',
+      isBreaking: Math.random() > 0.7, // Random breaking news flag
+      trending: Math.random() > 0.5 ? (Math.random() > 0.5 ? 'up' : 'down') : undefined,
+      change: Math.random() > 0.5 ? `${Math.random() > 0.5 ? '+' : '-'}${(Math.random() * 5 + 0.1).toFixed(1)}%` : undefined,
+      readTime: Math.ceil((article.content?.length || 0) / 200) + ' menit',
+      source: article.source || 'Sahamnesia'
+    };
+  }, [getCategoryFromKeywords]);
 
   // Load articles and categories on component mount
   useEffect(() => {
@@ -134,8 +168,8 @@ const News: React.FC<MarketNewsProps> = ({ onNavigate }) => {
       setSentimentLoading(true);
       const sentiment = await newsAnalyticsService.analyzeMarketSentiment(articlesData);
       setMarketSentiment(sentiment);
-    } catch (error) {
-      console.error('Failed to load market sentiment:', error);
+    } catch (err) {
+      console.error('Failed to load market sentiment:', err);
     } finally {
       setSentimentLoading(false);
     }
@@ -145,8 +179,8 @@ const News: React.FC<MarketNewsProps> = ({ onNavigate }) => {
       setTrendingLoading(true);
       const trending = await newsAnalyticsService.generateTrendingArticles(articlesData);
       setTrendingArticles(trending);
-    } catch (error) {
-      console.error('Failed to load trending articles:', error);
+    } catch (err) {
+      console.error('Failed to load trending articles:', err);
     } finally {
       setTrendingLoading(false);
     }
@@ -176,48 +210,203 @@ const News: React.FC<MarketNewsProps> = ({ onNavigate }) => {
     return () => clearTimeout(debounceTimer);
   }, [searchQuery]);
   
-  // Calculate categories with counts only when articles are loaded
-  const categoriesWithCount = categories.map(cat => {
-    if (cat === 'Semua') {
-      return { name: cat, count: articles.length };
-    }
-    
-    const count = articles.filter(article => {
-      if (!article.keywords) return false;
-      return article.keywords.toLowerCase().includes(cat.toLowerCase());
-    }).length;
-    
-    return { name: cat, count };
-  });
-
-
-  // Convert articles to news articles
-  const newsArticles = articles.map(convertArticleToNews);
+  // Memoize expensive computations
+  const newsArticles = useMemo(() => {
+    console.log('Converting articles to news articles');
+    return articles.map(convertArticleToNews);
+  }, [articles, convertArticleToNews]);
   
   // Get breaking news (first 3 articles with breaking flag)
-  const breakingNews = newsArticles.filter(article => article.isBreaking).slice(0, 3);
+  const breakingNews = useMemo(() => {
+    return newsArticles.filter(article => article.isBreaking).slice(0, 3);
+  }, [newsArticles]);
 
   // Get latest news (all articles)
-  const latestNews = newsArticles;
+  const latestNews = useMemo(() => newsArticles, [newsArticles]);
+
+  // Calculate categories with counts only when articles are loaded
+  const categoriesWithCount = useMemo(() => {
+    console.log('Calculating categories with count');
+    return categories.map(cat => {
+      if (cat === 'Semua') {
+        return { name: cat, count: articles.length };
+      }
+      
+      const count = articles.filter(article => {
+        const articleCategory = getCategoryFromKeywords(article.keywords);
+        return articleCategory === cat || 
+               (article.keywords && article.keywords.toLowerCase().includes(cat.toLowerCase()));
+      }).length;
+      
+      return { name: cat, count };
+    });
+  }, [categories, articles, getCategoryFromKeywords]);
+
+  // Filter by date range
+  const filterByDate = useCallback((article: NewsArticle): boolean => {
+    if (dateFilter === 'all') return true;
+    
+    const articleDate = new Date(article.publishedAt.split(' • ')[0]);
+    const now = new Date();
+    const diffTime = now.getTime() - articleDate.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    switch (dateFilter) {
+      case 'today':
+        return diffDays <= 1;
+      case 'week':
+        return diffDays <= 7;
+      case 'month':
+        return diffDays <= 30;
+      default:
+        return true;
+    }
+  }, [dateFilter]);
+  
+  // Sort articles
+  const sortArticles = useCallback((articles: NewsArticle[]): NewsArticle[] => {
+    const sorted = [...articles];
+    
+    switch (sortBy) {
+      case 'newest':
+        return sorted.sort((a, b) => {
+          const dateA = new Date(a.publishedAt.split(' • ')[0]);
+          const dateB = new Date(b.publishedAt.split(' • ')[0]);
+          return dateB.getTime() - dateA.getTime();
+        });
+      case 'oldest':
+        return sorted.sort((a, b) => {
+          const dateA = new Date(a.publishedAt.split(' • ')[0]);
+          const dateB = new Date(b.publishedAt.split(' • ')[0]);
+          return dateA.getTime() - dateB.getTime();
+        });
+      case 'trending':
+        return sorted.sort((a, b) => {
+          // Sort by trending articles first, then by date
+          if (a.trending && !b.trending) return -1;
+          if (!a.trending && b.trending) return 1;
+          const dateA = new Date(a.publishedAt.split(' • ')[0]);
+          const dateB = new Date(b.publishedAt.split(' • ')[0]);
+          return dateB.getTime() - dateA.getTime();
+        });
+      default:
+        return sorted;
+    }
+  }, [sortBy]);
 
   // Get filtered news based on search and category
-  const getFilteredNews = () => {
+  const filteredNews = useMemo(() => {
+    console.log('Filtering news:', { 
+      selectedCategory, 
+      searchQuery: searchQuery.trim(), 
+      articlesCount: articles.length,
+      newsArticlesCount: newsArticles.length,
+      dateFilter,
+      sortBy
+    });
+    
+    let filtered: NewsArticle[] = [];
+    
     if (searchQuery.trim()) {
-      return searchResults.map(convertArticleToNews);
+      filtered = searchResults.map(convertArticleToNews);
+      console.log('Search results:', filtered.length);
+    } else if (selectedCategory === "Semua") {
+      filtered = latestNews;
+      console.log('Showing all news:', filtered.length);
+    } else {
+      filtered = latestNews.filter(article => {
+        // Direct category match
+        if (article.category === selectedCategory) {
+          return true;
+        }
+        
+        // Partial category match (case-insensitive)
+        if (article.category.toLowerCase().includes(selectedCategory.toLowerCase()) ||
+            selectedCategory.toLowerCase().includes(article.category.toLowerCase())) {
+          return true;
+        }
+        
+        return false;
+      });
+      
+      console.log(`Filtered news for "${selectedCategory}":`, {
+        totalNews: latestNews.length,
+        filteredCount: filtered.length,
+        sampleCategories: latestNews.slice(0, 5).map(a => ({ title: a.title, category: a.category }))
+      });
     }
     
-    if (selectedCategory === "Semua") {
-      return latestNews;
+    // Apply date filter
+    filtered = filtered.filter(filterByDate);
+    console.log('After date filter:', filtered.length);
+    
+    // Apply sorting
+    filtered = sortArticles(filtered);
+    console.log('After sorting:', filtered.length);
+    
+    return filtered;
+  }, [searchQuery, searchResults, selectedCategory, latestNews, convertArticleToNews, dateFilter, sortBy, filterByDate, sortArticles]);
+  
+  // Newsletter subscription handler
+  const handleNewsletterSubmit = useCallback(async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!newsletterEmail.trim()) {
+      setNewsletterMessage({ type: 'error', text: 'Silakan masukkan email Anda' });
+      return;
     }
     
-    return latestNews.filter(article => 
-      article.category === selectedCategory || 
-      article.category.toLowerCase().includes(selectedCategory.toLowerCase())
-    );
-  };
+    setNewsletterLoading(true);
+    setNewsletterMessage(null);
+    
+    try {
+      const response: NewsletterResponse = await newsletterService.subscribe(newsletterEmail, 'news-page');
+      
+      if (response.success) {
+        setNewsletterMessage({ type: 'success', text: response.message });
+        setNewsletterEmail(''); // Clear form on success
+      } else {
+        setNewsletterMessage({ type: 'error', text: response.message });
+      }
+    } catch (error) {
+      setNewsletterMessage({ 
+        type: 'error', 
+        text: 'Terjadi kesalahan. Silakan coba lagi.' 
+      });
+    } finally {
+      setNewsletterLoading(false);
+    }
+  }, [newsletterEmail]);
+
+  // Newsletter email change handler
+  const handleNewsletterEmailChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setNewsletterEmail(e.target.value);
+  }, []);
   
-  const filteredNews = getFilteredNews();
+  // Clear newsletter message after 5 seconds
+  useEffect(() => {
+    if (newsletterMessage) {
+      const timer = setTimeout(() => {
+        setNewsletterMessage(null);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [newsletterMessage]);
   
+  // Close dropdowns when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Element;
+      if (!target.closest('.filter-dropdown')) {
+        setShowFilters(false);
+        setShowDateFilter(false);
+      }
+    };
+    
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   // Loading state
   if (loading) {
     return (
@@ -290,41 +479,6 @@ const News: React.FC<MarketNewsProps> = ({ onNavigate }) => {
             </p>
           </div>
 
-          {/* Market Data Overview */}
-          {/* <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl p-6 mb-8">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold text-gray-900">Data Pasar Real-time</h2>
-              <div className="flex items-center space-x-3">
-                <span className="text-sm text-gray-600 flex items-center">
-                  <Clock className="h-4 w-4 mr-1" />
-                  Last updated: {new Date().toLocaleTimeString('id-ID')}
-                </span>
-                <button className="text-blue-600 hover:text-blue-700">
-                  <RefreshCw className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-              {marketData.map((data, index) => (
-                <div key={index} className="bg-white rounded-lg p-4 shadow-sm">
-                  <div className="text-sm text-gray-500 mb-1">{data.symbol}</div>
-                  <div className="text-lg font-bold text-gray-900">{data.price}</div>
-                  <div className={`text-sm flex items-center ${
-                    data.trending === "up" ? "text-green-600" : "text-red-600"
-                  }`}>
-                    {data.trending === "up" ? (
-                      <TrendingUp className="h-3 w-3 mr-1" />
-                    ) : (
-                      <TrendingDown className="h-3 w-3 mr-1" />
-                    )}
-                    <span>{data.change} ({data.changePercent})</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div> */}
-
           {/* Search and Filters */}
           <div className="flex flex-col md:flex-row gap-4 items-center mb-8">
             <div className="relative flex-1 max-w-md">
@@ -342,19 +496,102 @@ const News: React.FC<MarketNewsProps> = ({ onNavigate }) => {
                 </div>
               )}
             </div>
-            <div className="flex space-x-2">
-              <button className="flex items-center px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
-                <Filter className="h-4 w-4 mr-2" />
-                Filter
-              </button>
-              <button className="flex items-center px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
-                <Calendar className="h-4 w-4 mr-2" />
-                Tanggal
-              </button>
-              <button className="flex items-center px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+            <div className="flex space-x-2 relative">
+              {/* Filter Button */}
+              <div className="relative filter-dropdown">
+                <button 
+                  onClick={() => setShowFilters(!showFilters)}
+                  className={`flex items-center px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors ${
+                    showFilters ? 'bg-blue-50 border-blue-300 text-blue-700' : ''
+                  }`}
+                >
+                  <Filter className="h-4 w-4 mr-2" />
+                  Filter
+                </button>
+                
+                {/* Filter Dropdown */}
+                {showFilters && (
+                  <div className="absolute top-12 left-0 z-10 bg-white border border-gray-200 rounded-lg shadow-lg p-4 w-64">
+                    <h3 className="font-semibold text-gray-900 mb-3">Urutkan Berdasarkan</h3>
+                    <div className="space-y-2">
+                      {[
+                        { value: 'newest', label: 'Terbaru' },
+                        { value: 'oldest', label: 'Terlama' },
+                        { value: 'trending', label: 'Trending' }
+                      ].map((option) => (
+                        <label key={option.value} className="flex items-center">
+                          <input
+                            type="radio"
+                            name="sortBy"
+                            value={option.value}
+                            checked={sortBy === option.value}
+                            onChange={(e) => setSortBy(e.target.value as 'newest' | 'oldest' | 'trending')}
+                            className="mr-2"
+                          />
+                          <span className="text-sm">{option.label}</span>
+                        </label>
+                      ))}
+                    </div>
+                    <button 
+                      onClick={() => setShowFilters(false)}
+                      className="mt-3 text-sm text-blue-600 hover:text-blue-700"
+                    >
+                      Tutup
+                    </button>
+                  </div>
+                )}
+              </div>
+              
+              {/* Date Filter Button */}
+              <div className="relative filter-dropdown">
+                <button 
+                  onClick={() => setShowDateFilter(!showDateFilter)}
+                  className={`flex items-center px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors ${
+                    showDateFilter ? 'bg-blue-50 border-blue-300 text-blue-700' : ''
+                  }`}
+                >
+                  <Calendar className="h-4 w-4 mr-2" />
+                  Tanggal
+                </button>
+                
+                {/* Date Filter Dropdown */}
+                {showDateFilter && (
+                  <div className="absolute top-12 left-0 z-10 bg-white border border-gray-200 rounded-lg shadow-lg p-4 w-48">
+                    <h3 className="font-semibold text-gray-900 mb-3">Filter Tanggal</h3>
+                    <div className="space-y-2">
+                      {[
+                        { value: 'today', label: 'Hari ini' },
+                        { value: 'week', label: '7 hari terakhir' },
+                        { value: 'month', label: '30 hari terakhir' },
+                        { value: 'all', label: 'Semua waktu' }
+                      ].map((option) => (
+                        <label key={option.value} className="flex items-center">
+                          <input
+                            type="radio"
+                            name="dateFilter"
+                            value={option.value}
+                            checked={dateFilter === option.value}
+                            onChange={(e) => setDateFilter(e.target.value as 'today' | 'week' | 'month' | 'all')}
+                            className="mr-2"
+                          />
+                          <span className="text-sm">{option.label}</span>
+                        </label>
+                      ))}
+                    </div>
+                    <button 
+                      onClick={() => setShowDateFilter(false)}
+                      className="mt-3 text-sm text-blue-600 hover:text-blue-700"
+                    >
+                      Tutup
+                    </button>
+                  </div>
+                )}
+              </div>
+              
+              {/* <button className="flex items-center px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
                 <Bell className="h-4 w-4 mr-2" />
                 Notifikasi
-              </button>
+              </button> */}
             </div>
           </div>
         </div>
@@ -661,16 +898,42 @@ const News: React.FC<MarketNewsProps> = ({ onNavigate }) => {
                 <p className="text-blue-100 text-sm mb-4">
                   Subscribe untuk mendapatkan update berita pasar modal terbaru langsung di email Anda.
                 </p>
-                <div className="space-y-3">
+                
+                {newsletterMessage && (
+                  <div className={`mb-4 p-3 rounded-lg text-sm ${
+                    newsletterMessage.type === 'success' 
+                      ? 'bg-green-100 text-green-800 border border-green-200' 
+                      : 'bg-red-100 text-red-800 border border-red-200'
+                  }`}>
+                    {newsletterMessage.text}
+                  </div>
+                )}
+                
+                <form onSubmit={handleNewsletterSubmit} className="space-y-3">
                   <input
                     type="email"
-                    placeholder="Email address"
-                    className="w-full px-4 py-3 rounded-lg text-gray-900 placeholder-gray-500"
+                    placeholder="Masukkan email Anda"
+                    value={newsletterEmail}
+                    onChange={handleNewsletterEmailChange}
+                    disabled={newsletterLoading}
+                    className="w-full px-4 py-3 rounded-lg text-gray-900 placeholder-gray-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                    required
                   />
-                  <button className="w-full bg-white text-blue-600 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-colors">
-                    Subscribe
+                  <button 
+                    type="submit"
+                    disabled={newsletterLoading || !newsletterEmail.trim()}
+                    className="w-full bg-white text-blue-600 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-colors disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed flex items-center justify-center"
+                  >
+                    {newsletterLoading ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Mendaftar...
+                      </>
+                    ) : (
+                      'Subscribe'
+                    )}
                   </button>
-                </div>
+                </form>
               </div>
 
               {/* Most Read */}
